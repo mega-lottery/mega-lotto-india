@@ -475,81 +475,9 @@
                     <span style="font-family: var(--font-heading); font-size: 22px; font-weight: 900; color: #38ef7d;" id="buy-total-payable">₹19.00</span>
                 </div>
 
-                <button class="btn-primary-block" onclick="app.initiateTicketCheckout()">
-                    <i class="fa-solid fa-lock"></i> Proceed to Pay & Generate Ticket
+                <button class="btn-primary-block" id="btn-pay-and-confirm-ticket" onclick="app.payAndConfirmTicket()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 16px; padding: 15px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);">
+                    <i class="fa-solid fa-shield-halved"></i> <span id="btn-pay-text">Pay ₹19 & Confirm Ticket</span>
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==========================================================================
-         MODAL 2: PRODUCTION PAYMENT GATEWAY (REAL COMMERCIAL OFFICIAL GATEWAY)
-         ========================================================================== -->
-    <div class="modal-overlay" id="upi-payment-gateway-modal">
-        <div class="modal-container" style="max-width: 480px;">
-            <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-shield-halved" style="color: #38ef7d;"></i>
-                    <h3 style="font-size: 16px;">Mega Lotto Official Payment Gateway</h3>
-                </div>
-                <button class="btn-close-modal" onclick="app.closePaymentModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="commercial-checkout-card">
-                    <div class="checkout-merchant-row">
-                        <span>ORDER: <strong style="color: #fff; font-family: var(--font-mono);" id="gateway-order-id-display">ORD_...</strong></span>
-                        <span style="color:#38ef7d;"><i class="fa-solid fa-lock"></i> 256-BIT SSL ENCRYPTED</span>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: var(--radius-sm);">
-                        <div>
-                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Total Payable</div>
-                            <div class="checkout-amount-display" id="gateway-amount-display" style="margin: 0; font-size: 28px; color: #38ef7d;">₹19.00</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="font-size: 11px; color: #38ef7d; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> RBI Verified</span>
-                            <div style="font-size: 10px; color: var(--text-muted);">Instant Gateway Settlement</div>
-                        </div>
-                    </div>
-
-                    <!-- Payment Methods Supported -->
-                    <div style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-align: left; margin-bottom: 10px;">
-                        Supported Payment Rails (All UPI Apps, Cards & Banks):
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
-                        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 10px 4px; text-align: center;">
-                            <i class="fa-brands fa-google-pay" style="color: #4285f4; font-size: 20px;"></i>
-                            <div style="font-size: 10px; font-weight: 700; margin-top: 4px;">GPay</div>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 10px 4px; text-align: center;">
-                            <i class="fa-solid fa-mobile-screen-button" style="color: #a855f7; font-size: 18px;"></i>
-                            <div style="font-size: 10px; font-weight: 700; margin-top: 4px;">PhonePe</div>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 10px 4px; text-align: center;">
-                            <i class="fa-solid fa-wallet" style="color: #00b9f1; font-size: 18px;"></i>
-                            <div style="font-size: 10px; font-weight: 700; margin-top: 4px;">Paytm</div>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 10px 4px; text-align: center;">
-                            <i class="fa-solid fa-credit-card" style="color: #10b981; font-size: 18px;"></i>
-                            <div style="font-size: 10px; font-weight: 700; margin-top: 4px;">Cards/Net</div>
-                        </div>
-                    </div>
-
-                    <!-- Direct Official Gateway Checkout Trigger -->
-                    <button class="btn-primary-block" id="btn-process-gateway-pay" onclick="app.launchRazorpayCheckout()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%); margin-bottom: 14px; font-size: 15px; padding: 14px; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.4); font-weight: 800;">
-                        <i class="fa-solid fa-bolt" style="color: #fde047;"></i> <span id="gateway-pay-btn-text">Pay ₹19.00 via Razorpay Official Gateway</span>
-                    </button>
-
-                    <!-- Real-Time Server Verification Polling Status Box -->
-                    <div id="gateway-polling-status-box" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(56, 239, 125, 0.3); border-radius: var(--radius-md); padding: 10px 12px; text-align: center;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 700; color: #38ef7d;" id="gateway-polling-status-text">
-                            <i class="fa-solid fa-shield-halved"></i> 256-Bit Encrypted Payment Rail Connected
-                        </div>
-                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
-                            Ticket activates strictly upon real verified transaction.
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
