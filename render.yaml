@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: mega-lotto-india
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: npm install
+    startCommand: node server/server.js
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MERCHANT_NAME
+        value: MEGA LOTTO INDIA
+      - key: MERCHANT_VPA
+        value: mrvikash@fam
+      - key: RAZORPAY_KEY_ID
+        value: rzp_test_1DP5mmOlF5G5ag
+      - key: RAZORPAY_KEY_SECRET
+        value: s9x3W5eBw1YvX1948zQk8LmQ
