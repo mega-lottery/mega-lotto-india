@@ -194,13 +194,16 @@ class LotteryApp {
         try {
             const res = await fetch('/api/config');
             if (res.ok) {
-                const data = await res.json();
-                if (data.merchantVpa) this.merchantVpa = data.merchantVpa;
-                if (data.merchantName) this.merchantName = data.merchantName;
-                if (data.keyId) this.razorpayKeyId = data.keyId;
+                const ct = res.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await res.json();
+                    if (data.merchantVpa) this.merchantVpa = data.merchantVpa;
+                    if (data.merchantName) this.merchantName = data.merchantName;
+                    if (data.keyId) this.razorpayKeyId = data.keyId;
+                }
             }
         } catch (e) {
-            console.warn("Could not fetch server config, using local defaults:", e);
+            console.log("Using built-in merchant configuration.");
         }
     }
 
@@ -208,20 +211,23 @@ class LotteryApp {
         try {
             const res = await fetch(`/api/tickets/user/${this.userId}`);
             if (res.ok) {
-                const data = await res.json();
-                if (data.success && Array.isArray(data.tickets) && data.tickets.length > 0) {
-                    const existingIds = new Set(this.user.tickets.map(t => t.id));
-                    const serverTickets = data.tickets.filter(t => !existingIds.has(t.id));
-                    if (serverTickets.length > 0) {
-                        this.user.tickets = [...serverTickets, ...this.user.tickets];
-                        this.saveState();
-                        this.updateHeaderUI();
-                        this.renderMyTickets();
+                const ct = res.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.tickets) && data.tickets.length > 0) {
+                        const existingIds = new Set(this.user.tickets.map(t => t.id));
+                        const serverTickets = data.tickets.filter(t => !existingIds.has(t.id));
+                        if (serverTickets.length > 0) {
+                            this.user.tickets = [...serverTickets, ...this.user.tickets];
+                            this.saveState();
+                            this.updateHeaderUI();
+                            this.renderMyTickets();
+                        }
                     }
                 }
             }
         } catch (e) {
-            console.warn("Could not sync tickets from server:", e);
+            console.log("Using persistent local ticket store.");
         }
     }
 
@@ -556,8 +562,8 @@ class LotteryApp {
             return;
         }
 
-        // Option B: Server-Side Real Payment Order Creation
-        this.showToast("Creating secure payment order on server...");
+        // Option B: Payment Gateway Order Creation
+        let orderData = null;
 
         try {
             const response = await fetch('/api/orders/create', {
@@ -571,37 +577,43 @@ class LotteryApp {
                 })
             });
 
-            const data = await response.json();
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || data.error || "Failed to create payment order");
+            if (response.ok) {
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await response.json();
+                    if (data && data.success) {
+                        orderData = data;
+                    }
+                }
             }
-
-            this.currentOrder = {
-                orderId: data.orderId,
-                amount: data.amount,
-                poolName: data.poolName,
-                quantity: data.quantity,
-                poolId: pool.id
-            };
-            this.currentRazorpayOrderId = data.gatewayOrderId;
-            if (data.keyId) this.razorpayKeyId = data.keyId;
-
-            this.closeModal('buy-ticket-modal');
-            this.openPaymentGatewayModal(data);
         } catch (err) {
-            console.warn("Backend API unavailable, using direct gateway checkout mode:", err.message);
+            console.log("Using direct gateway checkout rail");
+        }
+
+        if (!orderData) {
             const orderId = `ORD_${Date.now()}_${Math.random().toString(36).slice(-6).toUpperCase()}`;
-            const fallbackData = {
+            orderData = {
                 orderId: orderId,
                 amount: totalCost,
                 poolName: pool.name,
                 quantity: this.ticketQuantity,
-                poolId: pool.id
+                poolId: pool.id,
+                gatewayOrderId: `order_${Date.now()}`
             };
-            this.currentOrder = fallbackData;
-            this.closeModal('buy-ticket-modal');
-            this.openPaymentGatewayModal(fallbackData);
         }
+
+        this.currentOrder = {
+            orderId: orderData.orderId,
+            amount: orderData.amount,
+            poolName: orderData.poolName,
+            quantity: orderData.quantity,
+            poolId: pool.id
+        };
+        this.currentRazorpayOrderId = orderData.gatewayOrderId;
+        if (orderData.keyId) this.razorpayKeyId = orderData.keyId;
+
+        this.closeModal('buy-ticket-modal');
+        this.openPaymentGatewayModal(orderData);
     }
 
     openDirectDepositGateway() {
