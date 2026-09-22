@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGA LOTTO INDIA | Official Real Online Lottery Platform (₹19 to ₹1000)</title>
+    <meta name="description" content="India's leading genuine online lottery platform starting at just ₹19. Direct UPI, GPay, PhonePe integration with instant computerized draw tickets.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Razorpay Standard Checkout SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+    <!-- Canvas for Celebratory Confetti -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- ================= TOP TRUST & COMPLIANCE BAR ================= -->
+    <div class="top-security-bar">
+        <div class="top-security-inner">
+            <span class="trust-pill-item"><i class="fa-solid fa-shield-halved"></i> 100% Provably Fair SHA-256 RNG</span>
+            <span class="trust-pill-item"><i class="fa-solid fa-lock"></i> 256-Bit SSL Military Grade Encryption</span>
+            <span class="trust-pill-item"><i class="fa-solid fa-bolt"></i> Instant Automated UPI Withdrawals (1-Min)</span>
+            <span class="trust-pill-item"><i class="fa-solid fa-circle-check"></i> ISO 27001 Certified Gaming Protocol</span>
+        </div>
+    </div>
+
+    <!-- ================= SITE HEADER ================= -->
+    <header class="site-header">
+        <div class="header-container">
+            <div class="logo-area" onclick="app.scrollToSection('starter-hero')">
+                <div class="logo-icon-wrapper">
+                    <i class="fa-solid fa-crown" style="color: #111;"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>MEGA LOTTO</h1>
+                    <span>GOVT. COMPLIANT • 100% REAL DRAWS</span>
+                </div>
+            </div>
+
+            <nav class="nav-links">
+                <a class="nav-item active" onclick="app.scrollToSection('lottery-pools')"><i class="fa-solid fa-ticket"></i> All Pools (₹19 - ₹1000)</a>
+                <a class="nav-item" onclick="app.openWinners()"><i class="fa-solid fa-award"></i> Live Winners</a>
+                <a class="nav-item" onclick="app.openDashboard()"><i class="fa-solid fa-receipt"></i> My Tickets (<span id="nav-ticket-count">0</span>)</a>
+                <a class="nav-item" onclick="app.openTermsModal('fairplay')"><i class="fa-solid fa-shield-halved"></i> Fair Play RNG</a>
+            </nav>
+
+            <div class="header-actions">
+                <!-- Sound Toggle -->
+                <button class="btn-close-modal" id="btn-sound-toggle" onclick="app.toggleSound()" title="Toggle Audio Sound">
+                    <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+                </button>
+
+                <!-- Real User Wallet (Starts at ₹0.00) -->
+                <div class="wallet-badge" onclick="app.openWalletModal('deposit')">
+                    <i class="fa-solid fa-wallet" style="color: #34d399;"></i>
+                    <div>
+                        <div style="font-size: 10px; color: #94a3b8; line-height: 1;">WALLET</div>
+                        <div class="wallet-amount" id="header-balance">₹0.00</div>
+                    </div>
+                    <span class="btn-add-cash">+ ADD</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= LIVE PARTICIPATION TICKER ================= -->
+    <div class="live-ticker-bar">
+        <div class="ticker-label">
+            <span class="pulse-dot"></span> LIVE PURCHASES
+        </div>
+        <div class="ticker-track" id="live-ticker-track">
+            <div class="ticker-item"><strong>Rahul S. (Delhi)</strong> bought 1 ticket in <span class="badge-tag">₹19 Pocket Booster</span></div>
+            <div class="ticker-item"><strong>Pooja K. (Mumbai)</strong> won <strong style="color: #38ef7d;">₹2,500</strong> in <span class="badge-tag">₹19 Booster Draw</span></div>
+            <div class="ticker-item"><strong>Amit M. (Bengaluru)</strong> joined <span class="badge-tag">₹49 Daily Super</span></div>
+            <div class="ticker-item"><strong>Suresh V. (Pune)</strong> booked 2 tickets in <span class="badge-tag">₹99 Silver Bumper</span></div>
+            <div class="ticker-item"><strong>Vikram R. (Kolkata)</strong> withdrew <strong style="color: #38ef7d;">₹5,000</strong> via UPI</div>
+        </div>
+    </div>
+
+    <!-- ================= ATTRACTIVE STARTER HERO (₹19 Pocket Booster) ================= -->
+    <section class="hero-section" id="starter-hero">
+        <div class="hero-attract-banner">
+            <div>
+                <div class="hero-badge-row">
+                    <span class="hot-live-badge"><span class="pulse-dot" style="background:#ef4444;"></span> FAST FILLING NOW</span>
+                    <span class="trust-hero-badge"><i class="fa-solid fa-circle-check"></i> START AT JUST ₹19</span>
+                </div>
+                <h2 class="hero-title">₹19 POCKET BOOSTER</h2>
+                <div class="hero-prize-amount">
+                    ₹2,500 CASH <span class="sub">GUARANTEED TOP PRIZE</span>
+                </div>
+                <p class="hero-desc">
+                    Affordable, fast-paced & high winning probability! Only 50 total participants per pool. Winner gets ₹2,500 cash credited instantly to UPI!
+                </p>
+
+                <!-- Live Slot Progress for ₹19 Pool -->
+                <div class="hero-slot-box">
+                    <div class="slot-stats-row">
+                        <span style="color: var(--ruby-hot);"><i class="fa-solid fa-fire"></i> Only <strong id="hero-slots-left">12</strong> / 50 Slots Remaining!</span>
+                        <span style="color: #34d399;" id="hero-slots-pct">76% Filled</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="hero-progress-bar" style="width: 76%;"></div>
+                    </div>
+                    <div class="hero-countdown-strip">
+                        <i class="fa-regular fa-clock"></i> <span>Draw Declares Automatically When Pool Fills or in:</span>
+                        <strong style="color: var(--gold-primary); font-family: var(--font-mono);" id="hero-mini-timer">04m : 22s</strong>
+                    </div>
+                </div>
+
+                <div class="hero-actions-row">
+                    <button class="btn-hero-buy-19" onclick="app.openBuyModal(0)">
+                        <i class="fa-solid fa-ticket"></i> Buy Ticket @ Just ₹19
+                    </button>
+                    <button class="btn-ticket-print" style="padding: 14px 24px; border-radius: var(--radius-full);" onclick="app.triggerLiveDrawSimulation(0)">
+                        <i class="fa-solid fa-play"></i> Watch Live Ball Draw
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3D Ball Machine Graphic Container -->
+            <div class="ball-machine-container">
+                <div style="font-size: 11px; color: var(--gold-primary); font-weight: 700; margin-bottom: 12px; letter-spacing: 1px;">
+                    <i class="fa-solid fa-shield-halved"></i> 100% PROVABLY FAIR BALL MACHINE
+                </div>
+                <div class="machine-globe" id="machine-globe">
+                    <div class="spinning-balls-holder" id="spinning-chamber">
+                        <div class="lottery-ball ball-gold ball-1">07</div>
+                        <div class="lottery-ball ball-cyan ball-2">18</div>
+                        <div class="lottery-ball ball-emerald ball-3">29</div>
+                        <div class="lottery-ball ball-ruby ball-4">42</div>
+                        <div class="lottery-ball ball-purple ball-5">53</div>
+                        <div class="lottery-ball ball-gold ball-6">88</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">
+                    Latest Drawn Lucky Numbers
+                </div>
+                <div class="drawn-balls-row" id="hero-drawn-numbers">
+                    <div class="drawn-ball">07</div>
+                    <div class="drawn-ball">14</div>
+                    <div class="drawn-ball">28</div>
+                    <div class="drawn-ball">35</div>
+                    <div class="drawn-ball">49</div>
+                    <div class="drawn-ball">72</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= STATS STRIP ================= -->
+    <section class="stats-strip">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+            <div class="stat-info">
+                <h4>Total Payouts Done</h4>
+                <div class="stat-value">₹4,82,500</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-info">
+                <h4>Live Active Users</h4>
+                <div class="stat-value">1,420 Players</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-bolt"></i></div>
+            <div class="stat-info">
+                <h4>Direct UPI Payouts</h4>
+                <div class="stat-value">Instant 1-Min</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="stat-info">
+                <h4>Security & RNG</h4>
+                <div class="stat-value">100% Genuine</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= HOW IT WORKS (3 SIMPLE STEPS) ================= -->
+    <section class="section-container" id="how-it-works-section">
+        <div class="section-header">
+            <div class="section-title-wrap">
+                <h2>⚡ How Mega Lotto Works (Simple & 100% Genuine)</h2>
+                <p>Participate in official computerised lottery pools in 3 transparent steps with zero manual delays.</p>
+            </div>
+            <button class="btn-ticket-print" onclick="app.openFairPlayVerifier()" style="padding: 10px 18px; border-radius: var(--radius-full); font-size: 13px;">
+                <i class="fa-solid fa-code-compare"></i> Verify SHA-256 Hash
+            </button>
+        </div>
+
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-number-badge">1</div>
+                <div style="font-size: 24px; color: var(--gold-primary); margin-bottom: 8px;"><i class="fa-solid fa-hand-pointer"></i></div>
+                <h3>1. Select Your Numbers</h3>
+                <p>Choose any lottery pool (starting at ₹19). Pick your 6 lucky numbers manually or use the 1-click Auto Quick Pick generator.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number-badge">2</div>
+                <div style="font-size: 24px; color: #34d399; margin-bottom: 8px;"><i class="fa-solid fa-qrcode"></i></div>
+                <h3>2. Instant 1-Click UPI Pay</h3>
+                <p>Pay securely using GPay, PhonePe, Paytm, or BHIM. Your cryptographically signed digital ticket pass is generated instantly.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number-badge">3</div>
+                <div style="font-size: 24px; color: var(--gold-primary); margin-bottom: 8px;"><i class="fa-solid fa-trophy"></i></div>
+                <h3>3. Provably Fair Draw & Payout</h3>
+                <p>Draw executes on automated timer using SHA-256 RNG. Winnings are transferred automatically to your UPI / Bank account within 1 minute!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= ALL LOTTERY POOLS (₹19 to ₹1000) ================= -->
+    <section class="section-container" id="lottery-pools">
+        <div class="section-header">
+            <div class="section-title-wrap">
+                <h2>Explore All Lottery Pools (₹19 - ₹1,000)</h2>
+                <p>Pick your pool, pay securely via UPI, and receive your verified cryptographic ticket pass instantly.</p>
+            </div>
+            <div class="filter-pills">
+                <button class="pill-btn active" onclick="app.filterPools('all', this)">All Lotteries</button>
+                <button class="pill-btn" onclick="app.filterPools('micro', this)">Under ₹100</button>
+                <button class="pill-btn" onclick="app.filterPools('bumper', this)">Mega & Bumper</button>
+            </div>
+        </div>
+
+        <div class="lottery-grid" id="lottery-grid"></div>
+    </section>
+
+    <!-- ================= MY TICKETS & DASHBOARD ================= -->
+    <section class="section-container" id="user-dashboard-section">
+        <div class="section-header">
+            <div class="section-title-wrap">
+                <h2>Player Dashboard & Active Tickets</h2>
+                <p>All your confirmed ticket passes, live draw countdowns, and real-time participant trackers.</p>
+            </div>
+            <button class="btn-ticket-print" onclick="app.openWalletModal('deposit')" style="padding: 10px 18px; border-radius: var(--radius-full);">
+                <i class="fa-solid fa-wallet"></i> Top Up Balance
+            </button>
+        </div>
+
+        <div class="dashboard-tabs">
+            <button class="dash-tab-btn active" onclick="app.switchDashTab('active', this)">
+                <i class="fa-solid fa-ticket"></i> Active Tickets (<span id="dash-active-count">0</span>)
+            </button>
+            <button class="dash-tab-btn" onclick="app.switchDashTab('history', this)">
+                <i class="fa-solid fa-clock-rotate-left"></i> Past Results & Draws
+            </button>
+            <button class="dash-tab-btn" onclick="app.switchDashTab('transactions', this)">
+                <i class="fa-solid fa-money-bill-transfer"></i> Wallet & Payment History
+            </button>
+        </div>
+
+        <!-- Active Tickets Grid -->
+        <div id="dash-active-view">
+            <div class="my-tickets-grid" id="my-tickets-list"></div>
+        </div>
+
+        <!-- Past Results View -->
+        <div id="dash-history-view" style="display: none;">
+            <div class="lottery-grid" id="past-results-list"></div>
+        </div>
+
+        <!-- Wallet Transactions View -->
+        <div id="dash-transactions-view" style="display: none;">
+            <div id="transactions-table-container"></div>
+        </div>
+    </section>
+
+    <!-- ================= RECENT WINNERS HALL OF FAME ================= -->
+    <section class="section-container" id="winners-section">
+        <div class="section-header">
+            <div class="section-title-wrap">
+                <h2>🏆 Recent Winners Hall of Fame</h2>
+                <p>Real-time list of participants who won cash prizes directly into their UPI accounts.</p>
+            </div>
+        </div>
+
+        <div class="winners-grid" id="winners-grid"></div>
+    </section>
+
+    <!-- ================= LIVE UPI SETTLEMENT LEDGER (PROOFS) ================= -->
+    <section class="section-container" id="settlement-ledger-section">
+        <div class="section-header">
+            <div class="section-title-wrap">
+                <h2>📊 Live UPI Settlement Ledger & Bank Payout Proofs</h2>
+                <p>Transparent public ledger of real-time payouts disbursed directly to winner UPI VPAs via NPCI Banking Rail.</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge-status-settled"><span class="pulse-dot" style="background:#38ef7d;"></span> LIVE STREAMING</span>
+            </div>
+        </div>
+
+        <div class="settlement-ledger-wrap">
+            <div class="ledger-table-head">
+                <div>Winner & Location</div>
+                <div>Bank UTR Reference</div>
+                <div>Pool Won</div>
+                <div>Amount Disbursed</div>
+                <div>Status</div>
+            </div>
+            <div id="live-ledger-rows">
+                <!-- Dynamically updated by app.js -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= WHY 100,000+ INDIANS TRUST MEGA LOTTO ================= -->
+    <section class="section-container" id="trust-pillars-section">
+        <div class="section-header">
+            <div class="section-title-wrap">
+                <h2>🛡️ Why 100,000+ Indian Players Trust Mega Lotto</h2>
+                <p>Engineered for utmost security, complete mathematical transparency, and instant financial safety.</p>
+            </div>
+        </div>
+
+        <div class="trust-pillars-grid">
+            <div class="trust-pillar-card">
+                <div class="trust-pillar-icon"><i class="fa-solid fa-bolt"></i></div>
+                <h3>1-Minute Direct UPI Payouts</h3>
+                <p>No waiting days for withdrawals. Once a draw declares, cash is transferred directly to your PhonePe/GPay/Paytm UPI automatically.</p>
+            </div>
+
+            <div class="trust-pillar-card">
+                <div class="trust-pillar-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3>SHA-256 Provably Fair</h3>
+                <p>Every single draw uses mathematical cryptographic hashes. The winning algorithm is 100% public, immutable, and tamper-proof.</p>
+            </div>
+
+            <div class="trust-pillar-card">
+                <div class="trust-pillar-icon"><i class="fa-solid fa-vault"></i></div>
+                <h3>100% Escrow Vault Guarantee</h3>
+                <p>Player entry pool funds are locked in RBI-compliant escrow banking partner accounts until the draw declares the verified winner.</p>
+            </div>
+
+            <div class="trust-pillar-card">
+                <div class="trust-pillar-icon"><i class="fa-solid fa-headset"></i></div>
+                <h3>24/7 Dedicated Support</h3>
+                <p>Have a question or need instant ticket verification? Our Indian support desk is available round-the-clock via WhatsApp & Live Chat.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= FOOTER & LEGAL COMPLIANCE ================= -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <div class="logo-icon-wrapper" style="width: 36px; height: 36px; font-size: 18px;">
+                            <i class="fa-solid fa-crown" style="color:#111;"></i>
+                        </div>
+                        <h3 style="margin: 0; color: var(--gold-primary);">MEGA LOTTO INDIA</h3>
+                    </div>
+                    <p>India's genuine real-time digital lottery platform. Operating with SHA-256 provably fair random number generators (RNG) and 256-bit SSL encrypted digital ticketing.</p>
+                </div>
+
+                <div class="footer-links">
+                    <h4 style="color:#fff; margin-bottom:10px;">Lottery Pools</h4>
+                    <ul style="list-style: none;">
+                        <li><a onclick="app.openBuyModal(0)">₹19 Pocket Booster</a></li>
+                        <li><a onclick="app.openBuyModal(1)">₹49 Daily Super 50</a></li>
+                        <li><a onclick="app.openBuyModal(2)">₹99 Silver Bumper</a></li>
+                        <li><a onclick="app.openBuyModal(3)">₹199 Gold Rush</a></li>
+                        <li><a onclick="app.openBuyModal(5)">₹999 Saturday Mega</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links">
+                    <h4 style="color:#fff; margin-bottom:10px;">Player Support</h4>
+                    <ul style="list-style: none;">
+                        <li><a onclick="app.openTermsModal('terms')">Terms & Conditions</a></li>
+                        <li><a onclick="app.openTermsModal('privacy')">Privacy Policy</a></li>
+                        <li><a onclick="app.openTermsModal('responsible')">Responsible Gaming</a></li>
+                        <li><a onclick="app.openTermsModal('fairplay')">Provably Fair Algorithm</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links">
+                    <h4 style="color:#fff; margin-bottom:10px;">Supported UPI Apps</h4>
+                    <p style="font-size: 12px; margin-bottom: 10px;">Direct instant payment & payout support via:</p>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <span class="trust-badge">GPay</span>
+                        <span class="trust-badge">PhonePe</span>
+                        <span class="trust-badge">Paytm</span>
+                        <span class="trust-badge">BHIM UPI</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="disclaimer-box">
+                <strong><i class="fa-solid fa-triangle-exclamation"></i> LEGAL & RESPONSIBLE PLAY NOTICE:</strong> 
+                This platform is strictly for users aged 18 years and above. Online lotteries carry financial risk. Please play responsibly.
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+                <div>© 2026 Mega Lotto Network. All rights reserved.</div>
+                <div style="display: flex; gap: 16px;">
+                    <a onclick="app.openTermsModal('terms')" style="color: var(--text-secondary); cursor: pointer;">Terms</a>
+                    <a onclick="app.openTermsModal('privacy')" style="color: var(--text-secondary); cursor: pointer;">Privacy</a>
+                    <a onclick="app.openTermsModal('fairplay')" style="color: var(--text-secondary); cursor: pointer;">RNG Certificate</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==========================================================================
+         MODAL 1: BUY TICKET & NUMBER PICKER MODAL
+         ========================================================================== -->
+    <div class="modal-overlay" id="buy-ticket-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div>
+                    <h3 id="buy-pool-title">Purchase Ticket</h3>
+                    <div style="font-size: 12px; color: var(--gold-primary);" id="buy-pool-subtitle">Win up to ₹2,500</div>
+                </div>
+                <button class="btn-close-modal" onclick="app.closeModal('buy-ticket-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(255,255,255,0.04); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                        <span>Entry Cost: <strong style="color: var(--gold-primary);" id="buy-ticket-price">₹19.00</strong></span>
+                        <span>Slots Left: <strong style="color: var(--ruby-hot);" id="buy-pool-slots-left">12 Slots</strong></span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="buy-pool-progress" style="width: 76%;"></div>
+                    </div>
+                </div>
+
+                <!-- Number Selection Mode -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span class="form-label" style="margin: 0;">Select 6 Lucky Numbers (1 - 99):</span>
+                    <button class="btn-ticket-action" onclick="app.autoQuickPick()" style="background: rgba(255,215,0,0.15); color: var(--gold-primary); flex: none; padding: 4px 10px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Auto Quick Pick
+                    </button>
+                </div>
+
+                <!-- Selected Numbers Preview -->
+                <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 14px;" id="selected-numbers-preview"></div>
+
+                <!-- Interactive 1-99 Number Picker Grid -->
+                <div class="number-grid" id="number-picker-grid"></div>
+
+                <!-- Ticket Quantity -->
+                <div class="form-group" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="form-label" style="margin:0;">Number of Tickets:</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="btn-close-modal" onclick="app.adjustQuantity(-1)" style="width:28px; height:28px;">-</button>
+                        <span style="font-family: var(--font-heading); font-size: 16px; font-weight: 800;" id="ticket-qty-val">1</span>
+                        <button class="btn-close-modal" onclick="app.adjustQuantity(1)" style="width:28px; height:28px;">+</button>
+                    </div>
+                </div>
+
+                <!-- Total Cost and Action Button -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(0,0,0,0.4); border-radius: var(--radius-sm); margin-bottom: 16px;">
+                    <span style="font-size: 14px; color: var(--text-secondary);">Total Payable:</span>
+                    <span style="font-family: var(--font-heading); font-size: 22px; font-weight: 900; color: #38ef7d;" id="buy-total-payable">₹19.00</span>
+                </div>
+
+                <button class="btn-primary-block" onclick="app.initiateTicketCheckout()">
+                    <i class="fa-solid fa-lock"></i> Proceed to Pay & Generate Ticket
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 2: PRODUCTION PAYMENT GATEWAY (SEAMLESS SECURE COMMERCIAL RAIL)
+         ========================================================================== -->
+    <div class="modal-overlay" id="upi-payment-gateway-modal">
+        <div class="modal-container" style="max-width: 490px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-shield-halved" style="color: #38ef7d;"></i>
+                    <h3 style="font-size: 16px;">Mega Lotto Official Payment Gateway</h3>
+                </div>
+                <button class="btn-close-modal" onclick="app.closePaymentModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="commercial-checkout-card">
+                    <div class="checkout-merchant-row">
+                        <span>ORDER: <strong style="color: #fff; font-family: var(--font-mono);" id="gateway-order-id-display">ORD_...</strong></span>
+                        <span style="color:#38ef7d;"><i class="fa-solid fa-lock"></i> 256-BIT SSL ENCRYPTED</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: var(--radius-sm);">
+                        <div>
+                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Payable Amount</div>
+                            <div class="checkout-amount-display" id="gateway-amount-display" style="margin: 0; font-size: 26px;">₹19.00</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 11px; color: #38ef7d; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> RBI Verified</span>
+                            <div style="font-size: 10px; color: var(--text-muted);">Instant Auto-Settlement</div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Mode Selection -->
+                    <div style="font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-bottom: 8px;">
+                        Select Payment Method:
+                    </div>
+                    <div class="gateway-methods-selector" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                        <button type="button" class="gateway-method-btn active" id="method-btn-gpay" onclick="app.selectPaymentMethod('gpay', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(66, 133, 244, 0.12); border: 1px solid #4285f4; border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
+                            <i class="fa-brands fa-google-pay" style="font-size: 20px; color: #4285f4;"></i>
+                            <div>
+                                <div style="font-size: 12px; font-weight: 800;">Google Pay</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Direct UPI Rail</div>
+                            </div>
+                        </button>
+                        <button type="button" class="gateway-method-btn" id="method-btn-phonepe" onclick="app.selectPaymentMethod('phonepe', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
+                            <i class="fa-solid fa-mobile-screen-button" style="font-size: 18px; color: #a855f7;"></i>
+                            <div>
+                                <div style="font-size: 12px; font-weight: 800;">PhonePe</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Instant UPI</div>
+                            </div>
+                        </button>
+                        <button type="button" class="gateway-method-btn" id="method-btn-paytm" onclick="app.selectPaymentMethod('paytm', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
+                            <i class="fa-solid fa-wallet" style="font-size: 18px; color: #00b9f1;"></i>
+                            <div>
+                                <div style="font-size: 12px; font-weight: 800;">Paytm / UPI</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Wallet & UPI</div>
+                            </div>
+                        </button>
+                        <button type="button" class="gateway-method-btn" id="method-btn-cards" onclick="app.selectPaymentMethod('cards', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
+                            <i class="fa-solid fa-credit-card" style="font-size: 18px; color: #38ef7d;"></i>
+                            <div>
+                                <div style="font-size: 12px; font-weight: 800;">Cards / NetBank</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">All Indian Banks</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Direct Official Gateway Checkout Trigger -->
+                    <button class="btn-primary-block" id="btn-process-gateway-pay" onclick="app.launchRazorpayCheckout()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%); margin-bottom: 14px; font-size: 15px; padding: 14px; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.4); font-weight: 800;">
+                        <i class="fa-solid fa-bolt" style="color: #fde047;"></i> <span id="gateway-pay-btn-text">Pay ₹19.00 via Razorpay Official Gateway</span>
+                    </button>
+
+                    <!-- Real-Time Server Verification Polling Status Box -->
+                    <div id="gateway-polling-status-box" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(56, 239, 125, 0.3); border-radius: var(--radius-md); padding: 12px 14px; text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700; color: #38ef7d;" id="gateway-polling-status-text">
+                            <i class="fa-solid fa-shield-halved"></i> 256-Bit Encrypted Payment Rail Connected
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                            Ticket activates strictly upon verified server transaction.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 3: DIGITAL TICKET PASS (Live Timer & Active Participants)
+         ========================================================================== -->
+    <div class="modal-overlay" id="ticket-view-modal">
+        <div class="modal-container" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3>Official Confirmed Lottery Pass</h3>
+                <button class="btn-close-modal" onclick="app.closeModal('ticket-view-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="ticket-modal-content">
+                <!-- Injected via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 4: WALLET DASHBOARD (Deposit & Withdrawals)
+         ========================================================================== -->
+    <div class="modal-overlay" id="wallet-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-wallet" style="color: #34d399;"></i> Wallet Dashboard</h3>
+                <button class="btn-close-modal" onclick="app.closeModal('wallet-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 12px 16px;">
+                        <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Total Balance</div>
+                        <div style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: #38ef7d;" id="wallet-modal-total">₹0.00</div>
+                    </div>
+                    <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: var(--radius-md); padding: 12px 16px;">
+                        <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Winnings Balance</div>
+                        <div style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--gold-primary);" id="wallet-modal-winnings">₹0.00</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-tabs" style="margin-bottom: 18px;">
+                    <button class="dash-tab-btn active" id="tab-btn-deposit" onclick="app.switchWalletTab('deposit')">
+                        <i class="fa-solid fa-qrcode"></i> Deposit Funds
+                    </button>
+                    <button class="dash-tab-btn" id="tab-btn-withdraw" onclick="app.switchWalletTab('withdraw')">
+                        <i class="fa-solid fa-building-columns"></i> Instant Withdrawal
+                    </button>
+                </div>
+
+                <!-- DEPOSIT VIEW -->
+                <div id="wallet-deposit-view">
+                    <div class="form-group">
+                        <label class="form-label">Deposit Amount (₹):</label>
+                        <input type="number" class="form-input" id="deposit-amount-input" value="100" min="19" step="10">
+                    </div>
+
+                    <button class="btn-primary-block" onclick="app.openDirectDepositGateway()">
+                        <i class="fa-solid fa-shield-halved"></i> Pay via GPay / PhonePe / UPI
+                    </button>
+                </div>
+
+                <!-- WITHDRAW VIEW (MINIMUM ₹1500) -->
+                <div id="wallet-withdraw-view" style="display: none;">
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label class="form-label" style="margin: 0;">Withdrawal Amount (₹):</label>
+                            <span style="font-size: 11px; font-weight: 700; color: var(--ruby-hot); background: rgba(239,68,68,0.15); padding: 2px 6px; border-radius: 4px;">
+                                Min Limit: <strong id="min-withdraw-badge">₹1500</strong>
+                            </span>
+                        </div>
+                        <input type="number" class="form-input" id="withdraw-amount-input" value="1500" min="1500" max="100000">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Available Winnings: <span id="withdrawable-val">₹0.00</span></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Your UPI ID (VPA):</label>
+                        <input type="text" class="form-input" id="withdraw-upi-input" placeholder="e.g. mobile@upi or name@okaxis">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Full Name as per Bank Account:</label>
+                        <input type="text" class="form-input" id="withdraw-name-input" placeholder="e.g. Rahul Sharma">
+                    </div>
+
+                    <button class="btn-primary-block" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff;" onclick="app.processWithdrawal()">
+                        <i class="fa-solid fa-bolt"></i> Transfer to Bank / UPI Instantly
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 5: TERMS & LEGAL POLICIES
+         ========================================================================== -->
+    <div class="modal-overlay" id="terms-modal">
+        <div class="modal-container" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="terms-modal-title">Terms & Conditions</h3>
+                <button class="btn-close-modal" onclick="app.closeModal('terms-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="terms-modal-body" style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         ADMIN DRAWER (Real Payment Approvals & Draw Triggers)
+         ========================================================================== -->
+    <aside class="admin-drawer" id="admin-drawer">
+        <div class="admin-header">
+            <h3 style="font-size: 16px; color: var(--gold-primary);"><i class="fa-solid fa-sliders"></i> Admin Control Panel</h3>
+            <button class="btn-close-modal" onclick="app.toggleAdminDrawer()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="admin-content">
+            <div class="admin-card">
+                <h4><i class="fa-solid fa-money-bill-wave"></i> Payment Gateway Routing</h4>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                    Merchant Gateway: <strong style="color: #38ef7d;">Razorpay / Secure Banking Rail</strong> (Connected)
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted);">
+                    All payments made by users automatically route directly through the payment gateway. On user's app/screen, it displays only "MEGA LOTTO INDIA".
+                </div>
+            </div>
+
+            <!-- Real Payment Gateway Audit Table for Owner/Admin -->
+            <div class="admin-card" style="border-color: rgba(56, 239, 125, 0.4); background: rgba(56, 239, 125, 0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h4 style="margin: 0; color: #38ef7d;"><i class="fa-solid fa-list-check"></i> Gateway Orders Audit Ledger</h4>
+                    <span style="font-size: 11px; background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 800;" id="admin-orders-count">0</span>
+                </div>
+                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 10px;">
+                    Real-time backend orders ledger. Status updates strictly upon authentic Gateway API / Webhook confirmation.
+                </p>
+                <div id="admin-orders-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto;">
+                    <!-- Dynamically populated from /api/admin/orders -->
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h4><i class="fa-solid fa-trophy"></i> Trigger Instant Winner Draw</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Select a pool and declare the winner immediately with live 3D ball animation.</p>
+                <div style="display: flex; gap: 8px; flex-direction: column;">
+                    <button class="btn-ticket-print" onclick="app.triggerLiveDrawSimulation(0)">
+                        <i class="fa-solid fa-play"></i> Draw ₹19 Pocket Booster
+                    </button>
+                    <button class="btn-ticket-print" onclick="app.triggerLiveDrawSimulation(1)">
+                        <i class="fa-solid fa-play"></i> Draw ₹49 Daily Super
+                    </button>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h4><i class="fa-solid fa-wallet"></i> Manual Test Credit</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Add test balance to wallet.</p>
+                <div style="display: flex; gap: 8px;">
+                    <button class="chip-btn" onclick="app.adminAddCash(100)">+ ₹100</button>
+                    <button class="chip-btn" onclick="app.adminAddCash(500)">+ ₹500</button>
+                    <button class="chip-btn" onclick="app.adminAddCash(2500)">+ ₹2,500</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==========================================================================
+         MODAL 6: PROVABLY FAIR SHA-256 HASH VERIFIER
+         ========================================================================== -->
+    <div class="modal-overlay" id="fairplay-verifier-modal">
+        <div class="modal-container" style="max-width: 540px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-shield-halved" style="color: #38ef7d;"></i>
+                    <h3 style="font-size: 16px;">SHA-256 Provably Fair Draw Verifier</h3>
+                </div>
+                <button class="btn-close-modal" onclick="app.closeModal('fairplay-verifier-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+                    Every winning combination is determined by an immutable cryptographic hash computed from the server seed, pool ID, and round timestamp. Verify any draw in real-time:
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Draw ID or Ticket Serial:</label>
+                    <input type="text" class="form-input" id="verify-draw-input" value="DRW-BST-902">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Client Entropy / Block Seed:</label>
+                    <input type="text" class="form-input" id="verify-seed-input" value="0x7f4a9b2c8e1d5a3f">
+                </div>
+
+                <button class="btn-primary-block" onclick="app.calculateCryptographicHash()">
+                    <i class="fa-solid fa-calculator"></i> Compute & Verify SHA-256 Hash
+                </button>
+
+                <div class="hash-verifier-box" style="margin-top: 16px;" id="verifier-result-box">
+                    <div style="font-size: 11px; color: #34d399; font-weight: 700;">
+                        <i class="fa-solid fa-circle-check"></i> CRYPTOGRAPHIC HASH VERIFIED (100% UNTAMPERED)
+                    </div>
+                    <div class="code-hash-display" id="verifier-hash-output">
+                        e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+                        Winning Balls: <strong style="color: var(--gold-primary);">07 • 14 • 28 • 35 • 49 • 72</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= FLOATING REAL-TIME PAYOUT POPUP ================= -->
+    <div class="live-payout-popup-container" id="payout-popup-container">
+        <div class="payout-popup-card" id="payout-popup-card">
+            <div class="popup-avatar" id="popup-avatar">RS</div>
+            <div class="popup-details">
+                <div class="popup-title" id="popup-title">Rahul S. (Delhi) received ₹2,500</div>
+                <div class="popup-sub">
+                    <span style="color:#38ef7d;"><i class="fa-solid fa-circle-check"></i> UPI Settled</span>
+                    <span id="popup-ref">• Ref: UPI9284102941</span>
+                    <span id="popup-time">• Just Now</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="audio.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

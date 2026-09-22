@@ -1,0 +1,20 @@
+{
+  "name": "mega-lotto-india",
+  "version": "1.0.0",
+  "description": "Mega Lotto India - Production Payment Gateway & Server-Verified Ticketing System",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "test": "node server/tests/payment.test.js"
+  },
+  "keywords": ["lottery", "upi", "razorpay", "payment-gateway", "secure-ticketing"],
+  "author": "Mega Lotto Network",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "razorpay": "^2.9.4"
+  }
+}
