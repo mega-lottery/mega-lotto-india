@@ -144,6 +144,25 @@ class SoundManager {
             }
         } catch (e) { }
     }
+
+    playWheelTick() {
+        if (!this.soundEnabled) return;
+        this.init();
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(950, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.02);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.02);
+        } catch (e) { }
+    }
 }
 
 window.soundManager = new SoundManager();

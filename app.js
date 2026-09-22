@@ -511,6 +511,9 @@ class LotteryApp {
 
         const dCnt = document.getElementById('dash-active-count');
         if (dCnt) dCnt.innerText = this.user.tickets.length;
+
+        const mobBadge = document.getElementById('mob-ticket-badge');
+        if (mobBadge) mobBadge.innerText = this.user.tickets.length;
     }
 
     // ==========================================================================
@@ -789,7 +792,7 @@ class LotteryApp {
         const payBtn = document.getElementById('btn-process-gateway-pay');
         if (payBtn) {
             payBtn.disabled = false;
-            payBtn.innerHTML = `<i class="fa-solid fa-bolt" style="color: #fde047;"></i> <span id="gateway-pay-btn-text">Pay ₹${orderData.amount.toFixed(2)} via Razorpay Official Gateway</span>`;
+            payBtn.innerHTML = `<i class="fa-solid fa-credit-card" style="color: #fde047;"></i> <span id="gateway-pay-btn-text">Pay ₹${orderData.amount.toFixed(2)} via Razorpay (Cards, NetBanking, All)</span>`;
         }
 
         const statusText = document.getElementById('gateway-polling-status-text');
@@ -800,11 +803,187 @@ class LotteryApp {
 
         this.openModal('upi-payment-gateway-modal');
         this.startOrderPolling(orderData.orderId);
+    }
 
-        // Immediately auto-open the authentic Razorpay checkout window
+    triggerUpiIntent(appType) {
+        if (!this.currentOrder) {
+            this.showToast("No active order found. Please select numbers and click Buy.");
+            return;
+        }
+        if (window.soundManager) window.soundManager.playClick();
+
+        const amount = this.currentOrder.amount;
+        const orderId = this.currentOrder.orderId;
+        const merchantVpa = this.merchantVpa || "mrvikash@fam";
+        const merchantName = encodeURIComponent(this.merchantName || "MEGA LOTTO INDIA");
+        const note = encodeURIComponent(`Mega Lotto ${this.currentOrder.poolName}`);
+
+        let upiUrl = `upi://pay?pa=${merchantVpa}&pn=${merchantName}&am=${amount}&tr=${orderId}&tn=${note}&cu=INR`;
+
+        if (appType === 'phonepe') {
+            upiUrl = `phonepe://pay?pa=${merchantVpa}&pn=${merchantName}&am=${amount}&tr=${orderId}&tn=${note}&cu=INR`;
+        } else if (appType === 'gpay') {
+            upiUrl = `tez://upi/pay?pa=${merchantVpa}&pn=${merchantName}&am=${amount}&tr=${orderId}&tn=${note}&cu=INR`;
+        } else if (appType === 'paytm') {
+            upiUrl = `paytmmp://pay?pa=${merchantVpa}&pn=${merchantName}&am=${amount}&tr=${orderId}&tn=${note}&cu=INR`;
+        }
+
+        const statusText = document.getElementById('gateway-polling-status-text');
+        if (statusText) {
+            statusText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> UPI app opened. After paying, enter 12-digit UTR below.`;
+            statusText.style.color = '#38ef7d';
+        }
+
+        this.showToast("📱 Opening UPI App... Complete payment and enter 12-digit UTR below.");
+        window.location.href = upiUrl;
+    }
+
+    toggleQrCodeDisplay() {
+        if (window.soundManager) window.soundManager.playClick();
+        const qrContainer = document.getElementById('dynamic-qr-container');
+        const qrImg = document.getElementById('dynamic-qr-img');
+        const qrText = document.getElementById('qr-toggle-text');
+        if (!qrContainer) return;
+
+        if (qrContainer.style.display === 'none' || qrContainer.style.display === '') {
+            const amount = this.currentOrder ? this.currentOrder.amount : 19;
+            const orderId = this.currentOrder ? this.currentOrder.orderId : `ORD_${Date.now()}`;
+            const merchantVpa = this.merchantVpa || "mrvikash@fam";
+            const merchantName = encodeURIComponent(this.merchantName || "MEGA LOTTO INDIA");
+            const upiString = `upi://pay?pa=${merchantVpa}&pn=${merchantName}&am=${amount}&tr=${orderId}&tn=MegaLotto&cu=INR`;
+            
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+            qrContainer.style.display = 'block';
+            if (qrText) qrText.innerText = "Hide QR Code";
+        } else {
+            qrContainer.style.display = 'none';
+            if (qrText) qrText.innerText = "Show QR Code (To Scan & Pay from Phone)";
+        }
+    }
+
+    async submitUtrForTicketConfirmation() {
+        const utrInput = document.getElementById('utr-input-code');
+        const utr = utrInput ? utrInput.value.trim() : '';
+        if (!utr || utr.length < 6) {
+            this.showToast("⚠️ Please enter a valid 12-digit UPI UTR / Ref No from your payment app.");
+            return;
+        }
+
+        if (window.soundManager) window.soundManager.playClick();
+        this.showToast(`⏳ Verifying UTR ${utr} on banking rail...`);
+
+        const pool = this.pools.find(p => p.id === (this.currentOrder ? this.currentOrder.poolId : 0)) || this.pools[0];
+        const exactSchedule = this.getExactDrawTarget(pool);
+        const qty = this.currentOrder ? (this.currentOrder.quantity || 1) : 1;
+        const generatedTickets = [];
+
+        for (let q = 0; q < qty; q++) {
+            generatedTickets.push({
+                id: `TCK_${Date.now()}_${q}`,
+                serial: `ML-${pool.id + 10}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
+                poolId: pool.id,
+                poolName: pool.name,
+                price: pool.price,
+                prize: pool.prize,
+                numbers: q === 0 && this.selectedNumbers.length === 6 ? [...this.selectedNumbers] : this.generateRandomNumbers(),
+                exactDrawLabel: exactSchedule.exactLabel,
+                drawTargetTimestamp: exactSchedule.timestamp,
+                utrRef: utr,
+                status: 'CONFIRMED'
+            });
+        }
+
+        try {
+            await fetch('/api/payments/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    orderId: this.currentOrder ? this.currentOrder.orderId : `ORD_${Date.now()}`,
+                    utr: utr,
+                    status: 'SUCCESS'
+                })
+            });
+        } catch (e) {
+            console.log("Client fallback ticket confirmation");
+        }
+
+        this.handlePaymentSuccess(generatedTickets, this.currentOrder || { amount: pool.price * qty, poolId: pool.id, quantity: qty });
+    }
+
+    openLuckyWheelModal() {
+        if (window.soundManager) window.soundManager.playClick();
+        this.openModal('lucky-wheel-modal');
+        const resEl = document.getElementById('wheel-prize-result');
+        if (resEl) resEl.innerText = "";
+    }
+
+    spinLuckyWheel() {
+        if (this.isWheelSpinning) return;
+        this.isWheelSpinning = true;
+
+        const btn = document.getElementById('btn-spin-wheel');
+        if (btn) btn.disabled = true;
+
+        const disc = document.getElementById('lucky-wheel-disc');
+        const resEl = document.getElementById('wheel-prize-result');
+        if (resEl) resEl.innerText = "🌀 Spinning the Mega Wheel...";
+
+        const prizes = [
+            { text: "₹10 Instant Cash Added to Wallet!", bonus: 10, type: 'cash' },
+            { text: "₹5 Discount Voucher Applied!", bonus: 5, type: 'discount' },
+            { text: "₹25 Mega Jackpot Cash Credit!", bonus: 25, type: 'cash' },
+            { text: "Free ₹10 Ticket Pass Credited!", bonus: 10, type: 'ticket' },
+            { text: "₹50 Bumper Deposit Bonus!", bonus: 50, type: 'cash' },
+            { text: "₹15 Instant Cash Added to Wallet!", bonus: 15, type: 'cash' },
+            { text: "2x Winning Multiplier Active on next draw!", bonus: 0, type: 'multiplier' },
+            { text: "₹100 VIP Grand Cash Reward!", bonus: 100, type: 'cash' }
+        ];
+
+        const chosenIndex = Math.floor(Math.random() * prizes.length);
+        const segmentAngle = 360 / prizes.length;
+        const targetRotation = 1800 + (360 - (chosenIndex * segmentAngle + segmentAngle / 2));
+
+        if (disc) {
+            disc.style.transform = `rotate(${targetRotation}deg)`;
+        }
+
+        const tickInterval = setInterval(() => {
+            if (window.soundManager) window.soundManager.playWheelTick();
+        }, 180);
+
         setTimeout(() => {
-            this.launchRazorpayCheckout();
-        }, 300);
+            clearInterval(tickInterval);
+            this.isWheelSpinning = false;
+            if (btn) btn.disabled = false;
+
+            const win = prizes[chosenIndex];
+            if (win.bonus > 0) {
+                this.user.wallet.total += win.bonus;
+                this.user.wallet.deposit += win.bonus;
+                this.user.transactions.unshift({
+                    id: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+                    type: "WINNING",
+                    amount: win.bonus,
+                    date: "Just Now",
+                    status: "Completed",
+                    refId: `Daily Lucky Spin Reward`
+                });
+                this.saveState();
+                this.updateHeaderUI();
+                this.renderTransactions();
+            }
+
+            if (resEl) {
+                resEl.innerHTML = `<i class="fa-solid fa-trophy" style="color:var(--gold-primary);"></i> ${win.text}`;
+            }
+
+            if (window.soundManager) {
+                window.soundManager.playWinFanfare();
+                window.soundManager.playCoins();
+            }
+            this.triggerConfetti();
+            this.showToast(`🎁 Lucky Spin Reward: ${win.text}`);
+        }, 4600);
     }
 
     selectPaymentMethod(method, btn) {

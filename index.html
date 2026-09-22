@@ -483,7 +483,7 @@
     </div>
 
     <!-- ==========================================================================
-         MODAL 2: PRODUCTION PAYMENT GATEWAY (SEAMLESS SECURE COMMERCIAL RAIL)
+         MODAL 2: PRODUCTION PAYMENT GATEWAY (REAL COMMERCIAL DIRECT UPI & RAILS)
          ========================================================================== -->
     <div class="modal-overlay" id="upi-payment-gateway-modal">
         <div class="modal-container" style="max-width: 490px;">
@@ -503,62 +503,92 @@
 
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: var(--radius-sm);">
                         <div>
-                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Payable Amount</div>
-                            <div class="checkout-amount-display" id="gateway-amount-display" style="margin: 0; font-size: 26px;">₹19.00</div>
+                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Total Payable</div>
+                            <div class="checkout-amount-display" id="gateway-amount-display" style="margin: 0; font-size: 28px; color: #38ef7d;">₹19.00</div>
                         </div>
                         <div style="text-align: right;">
                             <span style="font-size: 11px; color: #38ef7d; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> RBI Verified</span>
-                            <div style="font-size: 10px; color: var(--text-muted);">Instant Auto-Settlement</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">Instant 1-Tap UPI Settlement</div>
                         </div>
                     </div>
 
-                    <!-- Payment Mode Selection -->
-                    <div style="font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-bottom: 8px;">
-                        Select Payment Method:
+                    <!-- Direct 1-Tap UPI Apps (PhonePe, GPay, Paytm, BHIM) -->
+                    <div style="font-size: 12px; color: var(--gold-primary); font-weight: 800; text-align: left; margin-bottom: 8px;">
+                        <i class="fa-solid fa-mobile-screen-button"></i> 1-Tap Direct UPI Apps (Instant Auto-Pay):
                     </div>
-                    <div class="gateway-methods-selector" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
-                        <button type="button" class="gateway-method-btn active" id="method-btn-gpay" onclick="app.selectPaymentMethod('gpay', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(66, 133, 244, 0.12); border: 1px solid #4285f4; border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
-                            <i class="fa-brands fa-google-pay" style="font-size: 20px; color: #4285f4;"></i>
+                    <div class="gateway-methods-selector" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+                        <a id="btn-intent-phonepe" href="javascript:void(0)" onclick="app.triggerUpiIntent('phonepe')" class="direct-upi-btn phonepe-theme">
+                            <i class="fa-solid fa-mobile-screen-button" style="color: #a855f7; font-size: 20px;"></i>
                             <div>
-                                <div style="font-size: 12px; font-weight: 800;">Google Pay</div>
-                                <div style="font-size: 10px; color: var(--text-muted);">Direct UPI Rail</div>
+                                <div style="font-weight: 800; font-size: 13px;">PhonePe</div>
+                                <div style="font-size: 10px; color: #d8b4fe;">Open PhonePe App</div>
                             </div>
-                        </button>
-                        <button type="button" class="gateway-method-btn" id="method-btn-phonepe" onclick="app.selectPaymentMethod('phonepe', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
-                            <i class="fa-solid fa-mobile-screen-button" style="font-size: 18px; color: #a855f7;"></i>
+                        </a>
+                        <a id="btn-intent-gpay" href="javascript:void(0)" onclick="app.triggerUpiIntent('gpay')" class="direct-upi-btn gpay-theme">
+                            <i class="fa-brands fa-google-pay" style="color: #4285f4; font-size: 24px;"></i>
                             <div>
-                                <div style="font-size: 12px; font-weight: 800;">PhonePe</div>
-                                <div style="font-size: 10px; color: var(--text-muted);">Instant UPI</div>
+                                <div style="font-weight: 800; font-size: 13px;">Google Pay</div>
+                                <div style="font-size: 10px; color: #93c5fd;">Open GPay App</div>
                             </div>
-                        </button>
-                        <button type="button" class="gateway-method-btn" id="method-btn-paytm" onclick="app.selectPaymentMethod('paytm', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
-                            <i class="fa-solid fa-wallet" style="font-size: 18px; color: #00b9f1;"></i>
+                        </a>
+                        <a id="btn-intent-paytm" href="javascript:void(0)" onclick="app.triggerUpiIntent('paytm')" class="direct-upi-btn paytm-theme">
+                            <i class="fa-solid fa-wallet" style="color: #00b9f1; font-size: 20px;"></i>
                             <div>
-                                <div style="font-size: 12px; font-weight: 800;">Paytm / UPI</div>
-                                <div style="font-size: 10px; color: var(--text-muted);">Wallet & UPI</div>
+                                <div style="font-weight: 800; font-size: 13px;">Paytm UPI</div>
+                                <div style="font-size: 10px; color: #7dd3fc;">Open Paytm App</div>
                             </div>
-                        </button>
-                        <button type="button" class="gateway-method-btn" id="method-btn-cards" onclick="app.selectPaymentMethod('cards', this)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; cursor: pointer; text-align: left;">
-                            <i class="fa-solid fa-credit-card" style="font-size: 18px; color: #38ef7d;"></i>
+                        </a>
+                        <a id="btn-intent-bhim" href="javascript:void(0)" onclick="app.triggerUpiIntent('generic')" class="direct-upi-btn bhim-theme">
+                            <i class="fa-solid fa-bolt" style="color: #10b981; font-size: 20px;"></i>
                             <div>
-                                <div style="font-size: 12px; font-weight: 800;">Cards / NetBank</div>
-                                <div style="font-size: 10px; color: var(--text-muted);">All Indian Banks</div>
+                                <div style="font-weight: 800; font-size: 13px;">Any UPI App</div>
+                                <div style="font-size: 10px; color: #6ee7b7;">BHIM / Cred / Other</div>
                             </div>
+                        </a>
+                    </div>
+
+                    <!-- Toggle QR Code Option for PC / Dual Device Users -->
+                    <div style="margin-bottom: 14px;">
+                        <button type="button" class="btn-toggle-qr" onclick="app.toggleQrCodeDisplay()" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.15); border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-secondary); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="fa-solid fa-qrcode" style="color: var(--gold-primary);"></i> <span id="qr-toggle-text">Show QR Code (To Scan & Pay from Phone)</span>
                         </button>
+                        <div id="dynamic-qr-container" style="display: none; margin-top: 10px; padding: 12px; background: #fff; border-radius: var(--radius-md); text-align: center;">
+                            <img id="dynamic-qr-img" src="" alt="UPI QR Code" style="width: 170px; height: 170px; display: inline-block; border-radius: 8px;">
+                            <div style="font-size: 11px; color: #111; font-weight: 700; margin-top: 6px;">
+                                Scan with any UPI App (GPay, PhonePe, Paytm, BHIM)
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Direct Official Gateway Checkout Trigger -->
-                    <button class="btn-primary-block" id="btn-process-gateway-pay" onclick="app.launchRazorpayCheckout()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%); margin-bottom: 14px; font-size: 15px; padding: 14px; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.4); font-weight: 800;">
-                        <i class="fa-solid fa-bolt" style="color: #fde047;"></i> <span id="gateway-pay-btn-text">Pay ₹19.00 via Razorpay Official Gateway</span>
+                    <button class="btn-primary-block" id="btn-process-gateway-pay" onclick="app.launchRazorpayCheckout()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%); margin-bottom: 14px; font-size: 14px; padding: 12px; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.4); font-weight: 800;">
+                        <i class="fa-solid fa-credit-card" style="color: #fde047;"></i> <span id="gateway-pay-btn-text">Pay via Razorpay (Cards, NetBanking, All)</span>
                     </button>
 
+                    <!-- Instant 12-Digit UTR / Ref ID Verification Box -->
+                    <div class="utr-verification-card" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255, 215, 0, 0.2); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; text-align: left;">
+                        <div style="font-size: 11px; font-weight: 800; color: var(--gold-primary); margin-bottom: 4px; display: flex; justify-content: space-between;">
+                            <span><i class="fa-solid fa-receipt"></i> Paid via UPI App? Enter UTR / Ref No:</span>
+                            <span style="color: #38ef7d;">Instant Verification</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 6px;">
+                            <input type="text" id="utr-input-code" placeholder="12-Digit UTR e.g. 503928198273" maxlength="16" class="form-input" style="padding: 8px 12px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 1px;">
+                            <button type="button" class="btn-buy-pool" onclick="app.submitUtrForTicketConfirmation()" style="padding: 8px 16px; font-size: 12px; white-space: nowrap;">
+                                <i class="fa-solid fa-check"></i> Verify Pass
+                            </button>
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+                            Found in your PhonePe/GPay/Paytm payment details under UPI Ref / UTR.
+                        </div>
+                    </div>
+
                     <!-- Real-Time Server Verification Polling Status Box -->
-                    <div id="gateway-polling-status-box" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(56, 239, 125, 0.3); border-radius: var(--radius-md); padding: 12px 14px; text-align: center;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700; color: #38ef7d;" id="gateway-polling-status-text">
+                    <div id="gateway-polling-status-box" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(56, 239, 125, 0.3); border-radius: var(--radius-md); padding: 10px 12px; text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 700; color: #38ef7d;" id="gateway-polling-status-text">
                             <i class="fa-solid fa-shield-halved"></i> 256-Bit Encrypted Payment Rail Connected
                         </div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                            Ticket activates strictly upon verified server transaction.
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+                            Ticket activates strictly upon verified transaction.
                         </div>
                     </div>
                 </div>
@@ -615,7 +645,7 @@
                 <div id="wallet-deposit-view">
                     <div class="form-group">
                         <label class="form-label">Deposit Amount (₹):</label>
-                        <input type="number" class="form-input" id="deposit-amount-input" value="100" min="19" step="10">
+                        <input type="number" class="form-input" id="deposit-amount-input" value="100" min="10" step="10">
                     </div>
 
                     <button class="btn-primary-block" onclick="app.openDirectDepositGateway()">
@@ -655,7 +685,42 @@
     </div>
 
     <!-- ==========================================================================
-         MODAL 5: TERMS & LEGAL POLICIES
+         MODAL 5: LUCKY WHEEL (Daily Spin & Win Free Bonus)
+         ========================================================================== -->
+    <div class="modal-overlay" id="lucky-wheel-modal">
+        <div class="modal-container" style="max-width: 420px; text-align: center;">
+            <div class="modal-header">
+                <h3 style="color: var(--gold-primary);"><i class="fa-solid fa-gift"></i> Daily Lucky Spin & Win</h3>
+                <button class="btn-close-modal" onclick="app.closeModal('lucky-wheel-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Spin the Mega Wheel every day for FREE to win instant cash balance, ticket discounts & surprise prizes!
+                </p>
+                <div class="wheel-outer-wrapper">
+                    <div class="wheel-pointer"><i class="fa-solid fa-caret-down"></i></div>
+                    <div class="lucky-wheel-disc" id="lucky-wheel-disc">
+                        <div class="wheel-segment seg-0"><span>₹10 Cash</span></div>
+                        <div class="wheel-segment seg-1"><span>₹5 Off</span></div>
+                        <div class="wheel-segment seg-2"><span>₹25 Cash</span></div>
+                        <div class="wheel-segment seg-3"><span>Free ₹10</span></div>
+                        <div class="wheel-segment seg-4"><span>₹50 Bumper</span></div>
+                        <div class="wheel-segment seg-5"><span>₹15 Cash</span></div>
+                        <div class="wheel-segment seg-6"><span>2x Multiplier</span></div>
+                        <div class="wheel-segment seg-7"><span>₹100 Bonus</span></div>
+                        <div class="wheel-center-pin"><i class="fa-solid fa-crown" style="color:#111;"></i></div>
+                    </div>
+                </div>
+                <button class="btn-primary-block" id="btn-spin-wheel" onclick="app.spinLuckyWheel()" style="margin-top: 18px; background: var(--gold-gradient); color: #111; font-weight: 900; font-size: 15px; padding: 14px; box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);">
+                    <i class="fa-solid fa-rotate"></i> SPIN FREE NOW
+                </button>
+                <div id="wheel-prize-result" style="margin-top: 14px; font-weight: 800; font-size: 14px; min-height: 24px; color: #38ef7d;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 6: TERMS & LEGAL POLICIES
          ========================================================================== -->
     <div class="modal-overlay" id="terms-modal">
         <div class="modal-container" style="max-width: 600px;">
@@ -679,10 +744,10 @@
             <div class="admin-card">
                 <h4><i class="fa-solid fa-money-bill-wave"></i> Payment Gateway Routing</h4>
                 <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
-                    Merchant Gateway: <strong style="color: #38ef7d;">Razorpay / Secure Banking Rail</strong> (Connected)
+                    Merchant Gateway: <strong style="color: #38ef7d;">Razorpay / Secure UPI Rail</strong> (Connected)
                 </div>
                 <div style="font-size: 11px; color: var(--text-muted);">
-                    All payments made by users automatically route directly through the payment gateway. On user's app/screen, it displays only "MEGA LOTTO INDIA".
+                    All payments made by users automatically route directly through UPI / Gateway. On user's app/screen, it displays only "MEGA LOTTO INDIA".
                 </div>
             </div>
 
@@ -708,7 +773,7 @@
                         <i class="fa-solid fa-play"></i> Draw ₹19 Pocket Booster
                     </button>
                     <button class="btn-ticket-print" onclick="app.triggerLiveDrawSimulation(1)">
-                        <i class="fa-solid fa-play"></i> Draw ₹49 Daily Super
+                        <i class="fa-solid fa-play"></i> Draw ₹10 Super Fast 10
                     </button>
                 </div>
             </div>
@@ -726,7 +791,7 @@
     </aside>
 
     <!-- ==========================================================================
-         MODAL 6: PROVABLY FAIR SHA-256 HASH VERIFIER
+         MODAL 7: PROVABLY FAIR SHA-256 HASH VERIFIER
          ========================================================================== -->
     <div class="modal-overlay" id="fairplay-verifier-modal">
         <div class="modal-container" style="max-width: 540px;">
@@ -786,11 +851,36 @@
         </div>
     </div>
 
+    <!-- ================= MOBILE BOTTOM STICKY NAVIGATION DOCK ================= -->
+    <nav class="mobile-bottom-nav">
+        <button class="mob-nav-btn active" id="mob-nav-lotteries" onclick="app.scrollToSection('lottery-pools')">
+            <i class="fa-solid fa-ticket"></i>
+            <span>Lotteries</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-nav-wheel" onclick="app.openLuckyWheelModal()">
+            <i class="fa-solid fa-gift" style="color: var(--gold-primary);"></i>
+            <span>Free Spin</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-nav-tickets" onclick="app.openDashboard()">
+            <i class="fa-solid fa-receipt"></i>
+            <span>My Passes</span>
+            <span class="mob-badge" id="mob-ticket-badge">0</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-nav-wallet" onclick="app.openWalletModal('deposit')">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Wallet</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-nav-winners" onclick="app.openWinners()">
+            <i class="fa-solid fa-trophy"></i>
+            <span>Winners</span>
+        </button>
+    </nav>
+
     <!-- Toast Notification Container -->
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Scripts -->
-    <script src="audio.js?v=20260922_4"></script>
-    <script src="app.js?v=20260922_4"></script>
+    <script src="audio.js?v=20260922_5"></script>
+    <script src="app.js?v=20260922_5"></script>
 </body>
 </html>
