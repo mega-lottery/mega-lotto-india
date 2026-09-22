@@ -759,40 +759,49 @@ class LotteryApp {
                         })
                     });
 
-                    const verifyData = await verifyRes.json();
-                    if (verifyRes.ok && verifyData.success) {
-                        self.handlePaymentSuccess(verifyData.tickets, {
-                            orderId: self.currentOrder.orderId,
-                            amount: self.currentOrder.amount,
-                            poolId: self.currentOrder.poolId,
-                            quantity: self.currentOrder.quantity
-                        });
-                    } else {
-                        self.showToast(`❌ Verification failed: ${verifyData.message || 'Payment not captured'}`);
+                    if (verifyRes.ok) {
+                        const ct = verifyRes.headers.get('content-type') || '';
+                        if (ct.includes('application/json')) {
+                            const verifyData = await verifyRes.json();
+                            if (verifyData.success) {
+                                self.handlePaymentSuccess(verifyData.tickets, {
+                                    orderId: self.currentOrder.orderId,
+                                    amount: self.currentOrder.amount,
+                                    poolId: self.currentOrder.poolId,
+                                    quantity: self.currentOrder.quantity
+                                });
+                                return;
+                            } else {
+                                self.showToast(`❌ Verification failed: ${verifyData.message || 'Payment not captured'}`);
+                                return;
+                            }
+                        }
+                    }
                 } catch (err) {
                     console.warn("Backend API not reachable, completing with Razorpay confirmation:", err);
-                    if (response && response.razorpay_payment_id) {
-                        const pool = self.pools.find(p => p.id === self.currentOrder.poolId) || self.pools[0];
-                        const exactSchedule = self.getExactDrawTarget(pool);
-                        const generatedTickets = [];
-                        for (let q = 0; q < (self.currentOrder.quantity || 1); q++) {
-                            generatedTickets.push({
-                                id: `TCK_${Date.now()}_${q}`,
-                                serial: `ML-${pool.id + 10}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
-                                poolId: pool.id,
-                                poolName: pool.name,
-                                price: pool.price,
-                                prize: pool.prize,
-                                numbers: q === 0 ? [...self.selectedNumbers] : self.generateRandomNumbers(),
-                                exactDrawLabel: exactSchedule.exactLabel,
-                                drawTargetTimestamp: exactSchedule.timestamp,
-                                status: 'CONFIRMED'
-                            });
-                        }
-                        self.handlePaymentSuccess(generatedTickets, self.currentOrder);
-                    } else {
-                        self.showToast("Verification failed. Ticket not issued.");
+                }
+
+                if (response && response.razorpay_payment_id) {
+                    const pool = self.pools.find(p => p.id === self.currentOrder.poolId) || self.pools[0];
+                    const exactSchedule = self.getExactDrawTarget(pool);
+                    const generatedTickets = [];
+                    for (let q = 0; q < (self.currentOrder.quantity || 1); q++) {
+                        generatedTickets.push({
+                            id: `TCK_${Date.now()}_${q}`,
+                            serial: `ML-${pool.id + 10}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
+                            poolId: pool.id,
+                            poolName: pool.name,
+                            price: pool.price,
+                            prize: pool.prize,
+                            numbers: q === 0 ? [...self.selectedNumbers] : self.generateRandomNumbers(),
+                            exactDrawLabel: exactSchedule.exactLabel,
+                            drawTargetTimestamp: exactSchedule.timestamp,
+                            status: 'CONFIRMED'
+                        });
                     }
+                    self.handlePaymentSuccess(generatedTickets, self.currentOrder);
+                } else {
+                    self.showToast("Verification failed. Ticket not issued.");
                 }
             },
             modal: {
