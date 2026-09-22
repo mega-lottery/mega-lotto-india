@@ -1239,7 +1239,24 @@ class LotteryApp {
             if (window.soundManager) window.soundManager.playBuySuccess();
             this.triggerConfetti();
             this.showToast(`🎉 Payment Confirmed! Ticket ${tickets[0].serial} is officially ACTIVE!`);
-            this.viewTicketPass(tickets[0].id);
+
+            // Populate & Trigger "Go to Ticket" Success Modal
+            const poolTitle = document.getElementById('success-pool-title');
+            const serialEl = document.getElementById('success-ticket-serial');
+            const viewPassBtn = document.getElementById('btn-success-view-pass');
+
+            if (poolTitle) poolTitle.innerText = `${pool ? pool.name : tickets[0].poolName} (x${tickets.length})`;
+            if (serialEl) serialEl.innerText = `Pass: ${tickets[0].serial}`;
+
+            if (viewPassBtn) {
+                viewPassBtn.onclick = () => {
+                    this.closeModal('ticket-purchase-success-modal');
+                    this.viewTicketPass(tickets[0].id);
+                    this.scrollToSection('user-dashboard-section');
+                };
+            }
+
+            this.openModal('ticket-purchase-success-modal');
         }
     }
 
@@ -1302,7 +1319,24 @@ class LotteryApp {
         if (window.soundManager) window.soundManager.playBuySuccess();
         this.triggerConfetti();
         this.showToast(`🎉 Ticket ${generatedTickets[0].serial} confirmed via Wallet Balance!`);
-        this.viewTicketPass(generatedTickets[0].id);
+
+        // Populate & Trigger "Go to Ticket" Success Modal
+        const poolTitle = document.getElementById('success-pool-title');
+        const serialEl = document.getElementById('success-ticket-serial');
+        const viewPassBtn = document.getElementById('btn-success-view-pass');
+
+        if (poolTitle) poolTitle.innerText = `${pool.name} (x${quantity})`;
+        if (serialEl) serialEl.innerText = `Pass: ${generatedTickets[0].serial}`;
+
+        if (viewPassBtn) {
+            viewPassBtn.onclick = () => {
+                this.closeModal('ticket-purchase-success-modal');
+                this.viewTicketPass(generatedTickets[0].id);
+                this.scrollToSection('user-dashboard-section');
+            };
+        }
+
+        this.openModal('ticket-purchase-success-modal');
     }
 
     // ==========================================================================
@@ -1478,14 +1512,25 @@ class LotteryApp {
                     `;
                 } else {
                     const winnerName = tck.declaredWinner || "Rahul S. (Delhi)";
+                    const userRank = tck.userRank || 4;
+                    const cashback = tck.consolationCashback !== undefined ? tck.consolationCashback.toFixed(2) : (tck.price ? (tck.price * 0.5).toFixed(2) : '9.50');
                     statusBanner = `
-                        <div style="background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 4px;">
-                                <span style="color: var(--gold-primary); font-weight: 800;"><i class="fa-solid fa-award"></i> WINNER DECLARED:</span>
-                                <strong style="color: #fff;">${winnerName}</strong>
+                        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="color: #fde047; font-weight: 800; font-size: 13px;">
+                                    <i class="fa-solid fa-face-smile-wink"></i> Try Luck Next Time!
+                                </span>
+                                <span style="font-size: 11px; background: rgba(245, 158, 11, 0.25); color: #fde047; font-weight: 800; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.4);">
+                                    Rank #${userRank} in Pool
+                                </span>
                             </div>
-                            <div style="font-size: 11px; color: var(--text-secondary);">
-                                Drawn Numbers: <strong style="color:#38ef7d;">${(tck.drawnNumbers || [7, 14, 28, 35, 49, 72]).map(n => n < 10 ? '0' + n : n).join(', ')}</strong>
+                            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 6px 10px; font-size: 11px; color: #38ef7d; font-weight: 700; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <span><i class="fa-solid fa-coins"></i> 50% Consolation Cashback:</span>
+                                <strong style="color: #fff; font-size: 12px;">+₹${cashback} Credited</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary);">
+                                <span>Winner: <strong style="color: #fff;">${winnerName}</strong></span>
+                                <span>Drawn: <strong style="color:#38ef7d;">${(tck.drawnNumbers || [7, 14, 28, 35, 49, 72]).map(n => n < 10 ? '0' + n : n).join(', ')}</strong></span>
                             </div>
                         </div>
                     `;
@@ -1601,6 +1646,22 @@ class LotteryApp {
             this.showToast(`🎉 CONGRATULATIONS! You won ${tck.prize} in ${tck.poolName}!`);
         } else {
             tck.userWon = false;
+            tck.userRank = tck.userRank || (Math.floor(Math.random() * 12) + 4);
+            const consolationCashback = Math.round((tck.price * 0.5) * 100) / 100;
+            tck.consolationCashback = consolationCashback;
+
+            // Credit 50% consolation cashback to wallet
+            this.user.wallet.total += consolationCashback;
+            this.user.wallet.winnings += consolationCashback;
+            this.user.transactions.unshift({
+                id: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+                type: "WINNING",
+                amount: consolationCashback,
+                date: "Just Now",
+                status: "Credited",
+                refId: `${tck.poolName} - 50% Consolation Cashback (Rank #${tck.userRank})`
+            });
+
             const names = ["Amit S. (Bengaluru)", "Pooja K. (Mumbai)", "Karan V. (Jaipur)", "Suresh M. (Pune)", "Neha G. (Delhi)"];
             tck.declaredWinner = names[Math.floor(Math.random() * names.length)];
 
@@ -1620,8 +1681,11 @@ class LotteryApp {
                 amount: tck.prize,
                 avatar: tck.declaredWinner[0] + (tck.declaredWinner.split(' ')[1] ? tck.declaredWinner.split(' ')[1][0] : 'W')
             });
+
+            this.updateHeaderUI();
+            this.renderTransactions();
             this.renderWinners();
-            this.showToast(`🏆 Draw Result Declared for ${tck.poolName}! Winner: ${tck.declaredWinner}`);
+            this.showToast(`💫 Draw Declared: Try luck next time! You finished Rank #${tck.userRank} & 50% Cashback (₹${consolationCashback.toFixed(2)}) is credited to your wallet!`);
         }
     }
 
@@ -1897,15 +1961,35 @@ class LotteryApp {
     finishDrawSimulation(pool, drawnNumbers) {
         let userWon = false;
         let wonAmount = 0;
+        let hadTicketsInPool = false;
+        let totalConsolation = 0;
 
         this.user.tickets.forEach(tck => {
-            if (tck.poolId === pool.id) {
+            if (tck.poolId === pool.id && tck.status === 'CONFIRMED') {
+                hadTicketsInPool = true;
+                tck.status = 'DECLARED';
+                tck.drawnNumbers = drawnNumbers;
                 const matches = tck.numbers.filter(n => drawnNumbers.includes(n)).length;
                 if (matches >= 4) {
                     userWon = true;
+                    tck.userWon = true;
                     if (matches === 6) wonAmount += pool.prizeVal;
                     else if (matches === 5) wonAmount += Math.floor(pool.prizeVal * 0.2);
                     else if (matches === 4) wonAmount += Math.floor(pool.prizeVal * 0.05);
+                } else {
+                    tck.userWon = false;
+                    tck.userRank = tck.userRank || (Math.floor(Math.random() * 12) + 4);
+                    const cashback = Math.round((tck.price * 0.5) * 100) / 100;
+                    tck.consolationCashback = cashback;
+                    totalConsolation += cashback;
+                    this.user.transactions.unshift({
+                        id: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+                        type: "WINNING",
+                        amount: cashback,
+                        date: "Just Now",
+                        status: "Credited",
+                        refId: `${pool.name} - 50% Consolation Cashback (Rank #${tck.userRank})`
+                    });
                 }
             }
         });
@@ -1933,11 +2017,22 @@ class LotteryApp {
             });
             this.saveState();
             this.updateHeaderUI();
+            this.renderMyTickets();
             this.renderTransactions();
 
             if (window.soundManager) window.soundManager.playWinFanfare();
             this.triggerConfetti();
             this.showToast(`🎉 CONGRATULATIONS! You won ₹${wonAmount.toLocaleString('en-IN')} in ${pool.name}!`);
+        } else if (hadTicketsInPool && totalConsolation > 0) {
+            this.user.wallet.total += totalConsolation;
+            this.user.wallet.winnings += totalConsolation;
+            this.saveState();
+            this.updateHeaderUI();
+            this.renderMyTickets();
+            this.renderTransactions();
+
+            if (window.soundManager) window.soundManager.playCoins();
+            this.showToast(`💫 Draw Declared: Try luck next time! 50% Consolation Cashback (₹${totalConsolation.toFixed(2)}) credited to your wallet!`);
         } else {
             if (window.soundManager) window.soundManager.playBuySuccess();
             this.showToast(`✅ Draw completed for ${pool.name}! Winning numbers: ${drawnNumbers.join(', ')}`);
