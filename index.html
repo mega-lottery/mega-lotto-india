@@ -16,9 +16,6 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="styles.css?v=20260922_4">
-
-    <!-- Razorpay Standard Checkout SDK -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
@@ -469,15 +466,38 @@
                     </div>
                 </div>
 
-                <!-- Total Cost and Action Button -->
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(0,0,0,0.4); border-radius: var(--radius-sm); margin-bottom: 16px;">
-                    <span style="font-size: 14px; color: var(--text-secondary);">Total Payable:</span>
-                    <span style="font-family: var(--font-heading); font-size: 22px; font-weight: 900; color: #38ef7d;" id="buy-total-payable">₹19.00</span>
-                </div>
+                <!-- Mobile-First Real UPI Intent Payment Section -->
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 16px; text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Confirm Ticket</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px;" id="buy-modal-pool-label">₹19 Pocket Booster</div>
+                    <div style="font-size: 26px; font-weight: 900; color: #38ef7d; margin-bottom: 14px;" id="buy-total-payable">₹19.00</div>
 
-                <button class="btn-primary-block" id="btn-pay-and-confirm-ticket" onclick="app.payAndConfirmTicket()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 16px; padding: 15px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);">
-                    <i class="fa-solid fa-shield-halved"></i> <span id="btn-pay-text">Pay ₹19 & Confirm Ticket</span>
-                </button>
+                    <button class="btn-primary-block" id="btn-pay-and-confirm-ticket" onclick="app.payWithUpiIntent()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 16px; padding: 15px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4); width: 100%;">
+                        <i class="fa-solid fa-mobile-screen-button"></i> <span id="btn-pay-text">Pay ₹19 with UPI</span>
+                    </button>
+
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--text-secondary); margin-top: 10px;">
+                        <span>Google Pay</span> • <span>PhonePe</span> • <span>Paytm</span> • <span>BHIM</span> • <span>UPI</span>
+                    </div>
+
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 8px;">
+                        Payment is verified automatically by backend.
+                    </div>
+
+                    <!-- Pending Verification Banner (Shown after UPI app is opened) -->
+                    <div id="upi-pending-status-banner" style="display: none; margin-top: 14px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-sm); padding: 10px; text-align: left;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 800; color: #fde047;">
+                            <span><i class="fa-solid fa-hourglass-half fa-spin"></i> Awaiting Bank Verification</span>
+                            <span style="font-size: 10px; font-family: var(--font-mono); color: #fff;" id="pending-upi-ref">Ref: ML...</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
+                            After completing UPI PIN in your banking app, verification confirms ticket automatically.
+                        </div>
+                        <button class="btn-ticket-action" onclick="app.checkPendingOrderStatus()" style="width: 100%; margin-top: 8px; justify-content: center; background: rgba(255,255,255,0.08); color: #fff; font-size: 11px; padding: 6px;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Check Verification Status
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

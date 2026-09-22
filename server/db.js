@@ -23,11 +23,11 @@ db.exec(`
         quantity INTEGER NOT NULL,
         amount REAL NOT NULL,
         currency TEXT NOT NULL DEFAULT 'INR',
+        upi_reference TEXT UNIQUE,
         selected_numbers TEXT NOT NULL,
+        payment_status TEXT NOT NULL DEFAULT 'PAYMENT_PENDING',
+        ticket_status TEXT NOT NULL DEFAULT 'PAYMENT_PENDING',
         status TEXT NOT NULL DEFAULT 'PENDING',
-        gateway_order_id TEXT,
-        gateway_payment_id TEXT,
-        gateway_signature TEXT,
         created_at INTEGER NOT NULL,
         paid_at INTEGER,
         expires_at INTEGER NOT NULL
@@ -59,22 +59,31 @@ db.exec(`
         processed_at INTEGER NOT NULL,
         payload TEXT
     );
+`);
 
+// Safe column migrations for existing SQLite database file
+try { db.exec("ALTER TABLE orders ADD COLUMN upi_reference TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'PAYMENT_PENDING';"); } catch (e) {}
+try { db.exec("ALTER TABLE orders ADD COLUMN ticket_status TEXT NOT NULL DEFAULT 'PAYMENT_PENDING';"); } catch (e) {}
+
+db.exec(`
     CREATE INDEX IF NOT EXISTS idx_orders_order_id ON orders(order_id);
     CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_upi_ref ON orders(upi_reference);
     CREATE INDEX IF NOT EXISTS idx_tickets_order_id ON tickets(order_id);
     CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
 `);
 
 // Database Methods
 const dbManager = {
-    // Create new Order (Status: PENDING)
-    createOrder({ orderId, userId, poolId, quantity, amount, selectedNumbers, gatewayOrderId, expiresAt }) {
+    // Create new Order (Status: PAYMENT_PENDING)
+    createOrder({ orderId, userId, poolId, quantity, amount, selectedNumbers, upiReference, expiresAt }) {
         const stmt = db.prepare(`
             INSERT INTO orders (
                 order_id, user_id, pool_id, quantity, amount, currency, 
-                selected_numbers, status, gateway_order_id, created_at, expires_at
-            ) VALUES (?, ?, ?, ?, ?, 'INR', ?, 'PENDING', ?, ?, ?)
+                upi_reference, selected_numbers, payment_status, ticket_status, status, 
+                created_at, expires_at
+            ) VALUES (?, ?, ?, ?, ?, 'INR', ?, ?, 'PAYMENT_PENDING', 'PAYMENT_PENDING', 'PENDING', ?, ?)
         `);
         const now = Date.now();
         stmt.run(
@@ -83,8 +92,8 @@ const dbManager = {
             poolId,
             quantity,
             amount,
+            upiReference || null,
             JSON.stringify(selectedNumbers),
-            gatewayOrderId || null,
             now,
             expiresAt
         );
@@ -101,9 +110,9 @@ const dbManager = {
         };
     },
 
-    getOrderByGatewayOrderId(gatewayOrderId) {
-        const stmt = db.prepare('SELECT * FROM orders WHERE gateway_order_id = ?');
-        const order = stmt.get(gatewayOrderId);
+    getOrderByUpiRef(upiReference) {
+        const stmt = db.prepare('SELECT * FROM orders WHERE upi_reference = ?');
+        const order = stmt.get(upiReference);
         if (!order) return null;
         return {
             ...order,
@@ -112,31 +121,27 @@ const dbManager = {
     },
 
     // Confirm Payment and Issue Confirmed Tickets atomically
-    confirmOrderAndIssueTickets({ orderId, gatewayPaymentId, gatewaySignature, tickets }) {
+    confirmOrderAndIssueTickets({ orderId, upiReference, tickets }) {
         const order = this.getOrderById(orderId);
         if (!order) throw new Error(`Order ${orderId} not found`);
-        if (order.status === 'SUCCESS') {
+        if (order.payment_status === 'PAID' && order.ticket_status === 'CONFIRMED') {
             // Idempotent: return existing confirmed tickets
             return this.getTicketsByOrderId(orderId);
         }
 
         const now = Date.now();
-        // Check if expired
-        if (order.expires_at < now && order.status !== 'SUCCESS') {
-            // If already expired, cannot confirm
-            // But if payment was captured before expiry, allow
-        }
 
-        // Update Order to SUCCESS
+        // Update Order to PAID & CONFIRMED
         const updateOrderStmt = db.prepare(`
             UPDATE orders 
-            SET status = 'SUCCESS', 
-                gateway_payment_id = ?, 
-                gateway_signature = ?, 
+            SET payment_status = 'PAID',
+                ticket_status = 'CONFIRMED',
+                status = 'SUCCESS', 
+                upi_reference = COALESCE(?, upi_reference), 
                 paid_at = ? 
             WHERE order_id = ?
         `);
-        updateOrderStmt.run(gatewayPaymentId, gatewaySignature || null, now, orderId);
+        updateOrderStmt.run(upiReference || null, now, orderId);
 
         // Insert tickets
         const insertTicketStmt = db.prepare(`
@@ -168,9 +173,15 @@ const dbManager = {
     },
 
     // Mark Order as FAILED or EXPIRED
-    updateOrderStatus(orderId, status) {
-        const stmt = db.prepare('UPDATE orders SET status = ? WHERE order_id = ?');
-        stmt.run(status, orderId);
+    updateOrderStatus(orderId, paymentStatus, ticketStatus = 'NOT_CONFIRMED') {
+        const stmt = db.prepare(`
+            UPDATE orders 
+            SET payment_status = ?, 
+                ticket_status = ?,
+                status = ? 
+            WHERE order_id = ?
+        `);
+        stmt.run(paymentStatus, ticketStatus, paymentStatus === 'PAID' ? 'SUCCESS' : paymentStatus, orderId);
         return this.getOrderById(orderId);
     },
 

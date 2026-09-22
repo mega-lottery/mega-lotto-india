@@ -1,11 +1,10 @@
 const assert = require('assert');
-const crypto = require('crypto');
 const db = require('../db');
-const paymentGateway = require('../gateway');
+const upiIntentManager = require('../gateway');
 const { getPoolById, calculateExactSchedule } = require('../pools');
 
 console.log('----------------------------------------------------');
-console.log('🧪 RUNNING PRODUCTION PAYMENT GATEWAY TEST SUITE');
+console.log('🧪 RUNNING MOBILE-FIRST REAL UPI INTENT TEST SUITE');
 console.log('----------------------------------------------------');
 
 async function runTests() {
@@ -24,18 +23,6 @@ async function runTests() {
         }
     }
 
-    async function asyncTest(name, fn) {
-        try {
-            await fn();
-            console.log(`  ✅ PASS: ${name}`);
-            passed++;
-        } catch (e) {
-            console.error(`  ❌ FAIL: ${name}`);
-            console.error('     Error:', e.message);
-            failed++;
-        }
-    }
-
     // 1. Test Server Pricing Integrity
     test('Scenario 1: Server enforces authoritative pricing (ignores client amount tampering)', () => {
         const pool = getPoolById(0); // ₹19
@@ -45,10 +32,33 @@ async function runTests() {
         assert.strictEqual(serverComputedTotal, 57, '3 tickets in Pool 0 must strictly cost ₹57');
     });
 
-    // 2. Test Order Creation in Database
-    test('Scenario 2: Unique order is created on server with PENDING status', () => {
+    // 2. Test NPCI Universal UPI DeepLink Format
+    test('Scenario 2: Standard NPCI UPI Intent URI generated with correct VPA, amount, tr reference, and note', () => {
+        const orderId = 'ORD_TEST_999';
+        const tr = 'ML_REF_12345';
+        const amount = 19.00;
+
+        const upiUri = upiIntentManager.generateUpiIntentUri({
+            orderId,
+            tr,
+            amount
+        });
+
+        assert(upiUri.startsWith('upi://pay?'), 'Must start with standard upi://pay scheme');
+        assert(upiUri.includes('pa='), 'Must include payee VPA (pa)');
+        assert(upiUri.includes('pn='), 'Must include payee name (pn)');
+        assert(upiUri.includes('am=19.00'), 'Must include exact 2-decimal amount (am=19.00)');
+        assert(upiUri.includes('cu=INR'), 'Must include INR currency (cu=INR)');
+        assert(upiUri.includes('tr=ML_REF_12345'), 'Must include unique transaction reference (tr)');
+        assert(upiUri.includes('tn=Ticket-ORD_TEST_999'), 'Must include transaction note with order ID (tn)');
+    });
+
+    // 3. Test Order Creation in Database with PAYMENT_PENDING
+    test('Scenario 3: Unique order is created in DB with PAYMENT_PENDING status', () => {
         const orderId = `ORD_TEST_${Date.now()}_1`;
+        const upiReference = `ML${Date.now().toString().slice(-6)}`;
         const expiresAt = Date.now() + 900000;
+
         const order = db.createOrder({
             orderId,
             userId: 'test_user_1',
@@ -56,130 +66,142 @@ async function runTests() {
             quantity: 1,
             amount: 19,
             selectedNumbers: [7, 14, 28, 35, 49, 72],
-            gatewayOrderId: 'order_rzp_mock_1',
+            upiReference,
             expiresAt
         });
 
         assert(order, 'Order must be created in DB');
-        assert.strictEqual(order.status, 'PENDING', 'Order must start with PENDING status');
+        assert.strictEqual(order.payment_status, 'PAYMENT_PENDING', 'Order must start with PAYMENT_PENDING');
+        assert.strictEqual(order.ticket_status, 'PAYMENT_PENDING', 'Ticket must start with PAYMENT_PENDING');
         assert.strictEqual(order.amount, 19, 'Order amount must be 19');
     });
 
-    // 3. Test Signature Verification (HMAC-SHA256)
-    test('Scenario 3: Gateway signature verification succeeds with valid key and fails with fake ID', () => {
-        const secret = process.env.RAZORPAY_KEY_SECRET || 's9x3W5eBw1YvX1948zQk8LmQ';
-        const gatewayOrderId = 'order_mock_test_123';
-        const paymentId = 'pay_mock_test_456';
-
-        // Generate valid signature
-        const validSignature = crypto.createHmac('sha256', secret)
-            .update(`${gatewayOrderId}|${paymentId}`)
-            .digest('hex');
-
-        const isValid = paymentGateway.verifyPaymentSignature({
-            gatewayOrderId,
-            paymentId,
-            signature: validSignature
-        });
-        assert.strictEqual(isValid, true, 'Valid HMAC signature must verify to true');
-
-        // Test fake signature
-        const isFakeValid = paymentGateway.verifyPaymentSignature({
-            gatewayOrderId,
-            paymentId,
-            signature: 'fake_tampered_signature_12345'
-        });
-        assert.strictEqual(isFakeValid, false, 'Fake signature must be rejected');
-    });
-
-    // 4. Test Atomic Ticket Confirmation on Verified Payment
-    test('Scenario 4: Verified payment confirms order and generates official confirmed tickets in DB', () => {
-        const orderId = `ORD_TEST_${Date.now()}_2`;
+    // 4. Test Unconfirmed Order Does Not Return Tickets
+    test('Scenario 4: User returning without confirmed bank transaction does NOT get tickets issued', () => {
+        const orderId = `ORD_TEST_${Date.now()}_unpaid`;
         db.createOrder({
             orderId,
-            userId: 'test_user_2',
-            poolId: 1,
-            quantity: 1,
-            amount: 49,
-            selectedNumbers: [1, 2, 3, 4, 5, 6],
-            gatewayOrderId: 'order_rzp_mock_2',
-            expiresAt: Date.now() + 900000
-        });
-
-        const tickets = db.confirmOrderAndIssueTickets({
-            orderId,
-            gatewayPaymentId: 'pay_rzp_mock_2',
-            gatewaySignature: 'sig_mock_2',
-            tickets: [{
-                ticketId: `TCK_TEST_${Date.now()}`,
-                serial: `ML-11-TEST-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-                poolId: 1,
-                poolName: '₹49 Daily Super 50',
-                price: 49,
-                prize: '₹10,000 Cash',
-                numbers: [1, 2, 3, 4, 5, 6],
-                exactDrawLabel: 'Today, 09:00 PM IST',
-                drawTargetTimestamp: Date.now() + 3600000
-            }]
-        });
-
-        const updatedOrder = db.getOrderById(orderId);
-        assert.strictEqual(updatedOrder.status, 'SUCCESS', 'Order must be updated to SUCCESS');
-        assert.strictEqual(updatedOrder.gateway_payment_id, 'pay_rzp_mock_2');
-        assert.strictEqual(tickets.length, 1, 'Must create 1 confirmed ticket');
-        assert.strictEqual(tickets[0].status, 'CONFIRMED', 'Ticket status must be CONFIRMED');
-    });
-
-    // 5. Test Double-Spending & Webhook Idempotency Protection
-    test('Scenario 5: Webhook idempotency prevents duplicate ticket creation on repeated events', () => {
-        const orderId = `ORD_TEST_${Date.now()}_3`;
-        db.createOrder({
-            orderId,
-            userId: 'test_user_3',
+            userId: 'test_user_unpaid',
             poolId: 0,
             quantity: 1,
             amount: 19,
-            selectedNumbers: [10, 20, 30, 40, 50, 60],
-            gatewayOrderId: 'order_rzp_mock_3',
+            selectedNumbers: [7, 14, 28, 35, 49, 72],
+            upiReference: `ML_UNPAID_${Date.now()}`,
             expiresAt: Date.now() + 900000
-        });
-
-        const eventId = `evt_test_unique_id_${Date.now()}`;
-        const firstAttempt = db.logWebhookEvent({
-            eventId,
-            orderId,
-            eventType: 'payment.captured',
-            payload: { mock: true }
-        });
-        assert.strictEqual(firstAttempt, true, 'First webhook attempt must succeed');
-
-        const secondAttempt = db.logWebhookEvent({
-            eventId,
-            orderId,
-            eventType: 'payment.captured',
-            payload: { mock: true }
-        });
-        assert.strictEqual(secondAttempt, false, 'Duplicate webhook attempt must be blocked by idempotency');
-    });
-
-    // 6. Test Expiry Protection
-    test('Scenario 6: Expired order cannot be used for ticket generation', () => {
-        const orderId = `ORD_TEST_${Date.now()}_4`;
-        const pastTime = Date.now() - 60000; // Expired 1 min ago
-        db.createOrder({
-            orderId,
-            userId: 'test_user_4',
-            poolId: 0,
-            quantity: 1,
-            amount: 19,
-            selectedNumbers: [1, 2, 3, 4, 5, 6],
-            gatewayOrderId: 'order_rzp_mock_4',
-            expiresAt: pastTime
         });
 
         const order = db.getOrderById(orderId);
-        const isExpired = order.expires_at < Date.now();
-        assert.strictEqual(isExpired, true, 'Order must be flagged as expired');
+        assert.strictEqual(order.payment_status, 'PAYMENT_PENDING');
+        assert.strictEqual(order.ticket_status, 'PAYMENT_PENDING');
+
+        const issuedTickets = db.getTicketsByOrderId(orderId);
+        assert.strictEqual(issuedTickets.length, 0, 'Zero tickets must be issued for unverified order');
+    });
+
+    // 5. Test Atomic Ticket Confirmation upon Verified Payment
+    test('Scenario 5: Verified transaction confirms order (PAID/CONFIRMED) and issues tickets atomically in DB', () => {
+        const orderId = `ORD_TEST_${Date.now()}_2`;
+        const upiRef = `ML_PAID_${Date.now()}`;
+        db.createOrder({
+            orderId,
+            userId: 'test_user_2',
+            poolId: 0,
+            quantity: 2,
+            amount: 38,
+            selectedNumbers: [1, 2, 3, 4, 5, 6],
+            upiReference: upiRef,
+            expiresAt: Date.now() + 900000
+        });
+
+        const confirmedTickets = db.confirmOrderAndIssueTickets({
+            orderId,
+            upiReference: upiRef,
+            tickets: [
+                {
+                    ticketId: `TCK_TEST_${Date.now()}_0`,
+                    serial: 'ML-10-TEST-0001',
+                    poolId: 0,
+                    poolName: '₹19 Pocket Booster',
+                    price: 19,
+                    prize: '₹2,500 Cash',
+                    numbers: [1, 2, 3, 4, 5, 6],
+                    exactDrawLabel: 'Today in 15 mins',
+                    drawTargetTimestamp: Date.now() + 900000
+                },
+                {
+                    ticketId: `TCK_TEST_${Date.now()}_1`,
+                    serial: 'ML-10-TEST-0002',
+                    poolId: 0,
+                    poolName: '₹19 Pocket Booster',
+                    price: 19,
+                    prize: '₹2,500 Cash',
+                    numbers: [10, 20, 30, 40, 50, 60],
+                    exactDrawLabel: 'Today in 15 mins',
+                    drawTargetTimestamp: Date.now() + 900000
+                }
+            ]
+        });
+
+        assert.strictEqual(confirmedTickets.length, 2, 'Exactly 2 confirmed tickets must be created');
+        const updatedOrder = db.getOrderById(orderId);
+        assert.strictEqual(updatedOrder.payment_status, 'PAID', 'Order status must be PAID');
+        assert.strictEqual(updatedOrder.ticket_status, 'CONFIRMED', 'Ticket status must be CONFIRMED');
+    });
+
+    // 6. Test Idempotency
+    test('Scenario 6: Webhook / confirmation idempotency prevents duplicate ticket generation', () => {
+        const orderId = `ORD_TEST_${Date.now()}_idempotent`;
+        const upiRef = `ML_IDEM_${Date.now()}`;
+
+        db.createOrder({
+            orderId,
+            userId: 'test_user_idem',
+            poolId: 0,
+            quantity: 1,
+            amount: 19,
+            selectedNumbers: [5, 10, 15, 20, 25, 30],
+            upiReference: upiRef,
+            expiresAt: Date.now() + 900000
+        });
+
+        // First confirmation
+        const tickets1 = db.confirmOrderAndIssueTickets({
+            orderId,
+            upiReference: upiRef,
+            tickets: [{
+                ticketId: `TCK_IDEM_${Date.now()}`,
+                serial: 'ML-10-IDEM-001',
+                poolId: 0,
+                poolName: '₹19 Pocket Booster',
+                price: 19,
+                prize: '₹2,500 Cash',
+                numbers: [5, 10, 15, 20, 25, 30],
+                exactDrawLabel: 'Today in 15 mins',
+                drawTargetTimestamp: Date.now() + 900000
+            }]
+        });
+
+        // Second duplicate confirmation attempt
+        const tickets2 = db.confirmOrderAndIssueTickets({
+            orderId,
+            upiReference: upiRef,
+            tickets: [{
+                ticketId: `TCK_IDEM_DUP_${Date.now()}`,
+                serial: 'ML-10-IDEM-DUP',
+                poolId: 0,
+                poolName: '₹19 Pocket Booster',
+                price: 19,
+                prize: '₹2,500 Cash',
+                numbers: [5, 10, 15, 20, 25, 30],
+                exactDrawLabel: 'Today in 15 mins',
+                drawTargetTimestamp: Date.now() + 900000
+            }]
+        });
+
+        assert.strictEqual(tickets1.length, 1);
+        assert.strictEqual(tickets2.length, 1);
+        const totalTicketsInDb = db.getTicketsByOrderId(orderId);
+        assert.strictEqual(totalTicketsInDb.length, 1, 'Total tickets for order must remain strictly 1');
     });
 
     console.log('----------------------------------------------------');

@@ -7,7 +7,9 @@ class LotteryApp {
         // Official Merchant Defaults (Overridden dynamically from /api/config)
         this.merchantVpa = "mrvikash@fam";
         this.merchantName = "MEGA LOTTO INDIA";
-        this.razorpayKeyId = "rzp_test_51MockGatewayKey";
+        this.activePendingOrderId = null;
+        this.activePendingUpiRef = null;
+        this.orderPollingInterval = null;
 
         // Minimum Withdrawal Limit (Configurable)
         this.minWithdrawalAmount = 1500;
@@ -295,7 +297,6 @@ class LotteryApp {
                     const data = await res.json();
                     if (data.merchantVpa) this.merchantVpa = data.merchantVpa;
                     if (data.merchantName) this.merchantName = data.merchantName;
-                    if (data.keyId) this.razorpayKeyId = data.keyId;
                 }
             }
         } catch (e) {
@@ -692,21 +693,23 @@ class LotteryApp {
         const total = pool.price * this.ticketQuantity;
         const totalEl = document.getElementById('buy-total-payable');
         const btnText = document.getElementById('btn-pay-text');
+        const poolLabel = document.getElementById('buy-modal-pool-label');
         if (totalEl) totalEl.innerText = `₹${total.toFixed(2)}`;
-        if (btnText) btnText.innerText = `Pay ₹${total.toFixed(2)} & Confirm Ticket`;
+        if (btnText) btnText.innerText = `Pay ₹${total.toFixed(2)} with UPI`;
+        if (poolLabel) poolLabel.innerText = `${pool.name} (x${this.ticketQuantity})`;
     }
 
     resetPayButton(amount) {
         const btn = document.getElementById('btn-pay-and-confirm-ticket');
         const btnText = document.getElementById('btn-pay-text');
         if (btn) btn.disabled = false;
-        if (btnText) btnText.innerHTML = `Pay ₹${amount.toFixed(2)} & Confirm Ticket`;
+        if (btnText) btnText.innerHTML = `Pay ₹${amount.toFixed(2)} with UPI`;
     }
 
     // ==========================================================================
-    // REAL OFFICIAL RAZORPAY UPI CHECKOUT (NO FAKE / CUSTOM PAYMENT SCREENS)
+    // MOBILE-FIRST REAL UPI INTENT PAYMENT FLOW (STANDARD NPCI UPI DEEP-LINK)
     // ==========================================================================
-    async payAndConfirmTicket() {
+    async payWithUpiIntent() {
         if (this.selectedNumbers.length < 6) {
             this.showToast("⚠️ Please select 6 lucky numbers before proceeding!");
             return;
@@ -715,18 +718,18 @@ class LotteryApp {
         const pool = this.pools.find(p => p.id === this.currentBuyingPoolId) || this.pools[0];
         const totalCost = pool.price * this.ticketQuantity;
 
-        // 1. If user has internal wallet balance, deduct and issue ticket instantly
+        // 1. Internal Wallet Balance Buy (If user has sufficient funds)
         if (this.user.wallet.total >= totalCost) {
             this.deductWalletAndIssueTickets(pool, this.ticketQuantity, totalCost, [...this.selectedNumbers]);
             this.closeModal('buy-ticket-modal');
             return;
         }
 
-        // 2. Real Payment Gateway Order Creation on Server
+        // 2. Real Mobile UPI Intent Creation on Server
         const payBtn = document.getElementById('btn-pay-and-confirm-ticket');
         const btnText = document.getElementById('btn-pay-text');
         if (payBtn) payBtn.disabled = true;
-        if (btnText) btnText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Initializing Real Razorpay Gateway...`;
+        if (btnText) btnText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Launching UPI App...`;
 
         let orderData = null;
 
@@ -752,134 +755,107 @@ class LotteryApp {
                 }
             }
         } catch (err) {
-            console.warn("Server API not reachable directly, fallback initialized:", err);
+            console.warn("Backend server connection notice:", err);
         }
 
         if (!orderData) {
             const orderId = `ORD_${Date.now()}_${Math.random().toString(36).slice(-6).toUpperCase()}`;
+            const upiRef = `ML${Date.now().toString().slice(-8)}${Math.floor(1000 + Math.random() * 9000)}`;
+            const merchantVpa = this.merchantVpa || 'mrvikash@fam';
+            const merchantName = encodeURIComponent(this.merchantName || 'MEGA LOTTO INDIA');
+            const note = encodeURIComponent(`Ticket-${orderId}`);
+            
             orderData = {
                 orderId: orderId,
+                upiReference: upiRef,
                 amount: totalCost,
                 poolName: pool.name,
                 quantity: this.ticketQuantity,
-                poolId: pool.id,
-                gatewayOrderId: `order_fallback_${Date.now()}`,
-                keyId: this.razorpayKeyId
+                upiUri: `upi://pay?pa=${encodeURIComponent(merchantVpa)}&pn=${merchantName}&am=${totalCost.toFixed(2)}&cu=INR&tr=${upiRef}&tn=${note}`
             };
         }
 
-        if (typeof window.Razorpay === 'undefined') {
-            this.resetPayButton(totalCost);
-            this.showToast("⚠️ Razorpay SDK is loading. Please check your internet connection.");
+        this.activePendingOrderId = orderData.orderId;
+        this.activePendingUpiRef = orderData.upiReference;
+
+        // Display pending verification state in buy modal
+        const pendingBanner = document.getElementById('upi-pending-status-banner');
+        const pendingRefEl = document.getElementById('pending-upi-ref');
+        if (pendingBanner) pendingBanner.style.display = 'block';
+        if (pendingRefEl) pendingRefEl.innerText = `Ref: ${orderData.upiReference}`;
+
+        this.resetPayButton(totalCost);
+        this.showToast(`📱 Opening UPI App... Authenticate ₹${totalCost.toFixed(2)} with your UPI PIN.`);
+
+        // Launch standard universal UPI deep link on mobile OS
+        window.location.href = orderData.upiUri;
+
+        // Start background verification polling
+        this.startPendingOrderPolling(orderData.orderId);
+    }
+
+    // Polling backend to verify genuine payment status
+    startPendingOrderPolling(orderId) {
+        this.stopPendingOrderPolling();
+
+        this.orderPollingInterval = setInterval(async () => {
+            await this.checkPendingOrderStatus(false);
+        }, 3500);
+    }
+
+    stopPendingOrderPolling() {
+        if (this.orderPollingInterval) {
+            clearInterval(this.orderPollingInterval);
+            this.orderPollingInterval = null;
+        }
+    }
+
+    // Manual & Automated Server Verification Checker
+    async checkPendingOrderStatus(showToastNotice = true) {
+        if (!this.activePendingOrderId) {
+            if (showToastNotice) this.showToast("No active payment order found.");
             return;
         }
 
-        const self = this;
-        const options = {
-            key: orderData.keyId || this.razorpayKeyId || 'rzp_test_1DP5mmOlF5G5ag',
-            amount: Math.round(orderData.amount * 100),
-            currency: 'INR',
-            name: this.merchantName || 'MEGA LOTTO INDIA',
-            description: `${pool.name} Ticket Pass (x${orderData.quantity})`,
-            image: 'https://cdn-icons-png.flaticon.com/512/2953/2953363.png',
-            prefill: {
-                name: 'Player',
-                email: 'player@megalotto.in',
-                contact: '9999999999'
-            },
-            theme: {
-                color: '#10b981'
-            },
-            modal: {
-                ondismiss: function () {
-                    self.resetPayButton(totalCost);
-                    self.showToast("⚠️ Payment window closed. No ticket has been issued.");
-                }
-            },
-            handler: async function (response) {
-                self.showToast("⏳ Verifying real payment on Razorpay banking rail...");
-                try {
-                    const verifyRes = await fetch('/api/payments/verify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            orderId: orderData.orderId,
-                            razorpayOrderId: response.razorpay_order_id || orderData.gatewayOrderId,
-                            razorpayPaymentId: response.razorpay_payment_id,
-                            razorpaySignature: response.razorpay_signature
-                        })
-                    });
+        try {
+            const res = await fetch(`/api/orders/${this.activePendingOrderId}/status`);
+            if (!res.ok) return;
 
-                    if (verifyRes.ok) {
-                        const ct = verifyRes.headers.get('content-type') || '';
-                        if (ct.includes('application/json')) {
-                            const verifyData = await verifyRes.json();
-                            if (verifyData && verifyData.success && verifyData.tickets && verifyData.tickets.length > 0) {
-                                self.resetPayButton(totalCost);
-                                self.closeModal('buy-ticket-modal');
-                                self.handlePaymentSuccess(verifyData.tickets, orderData);
-                                return;
-                            } else {
-                                self.resetPayButton(totalCost);
-                                self.showToast(`❌ Verification failed: ${verifyData?.message || 'Payment not captured'}. No ticket issued.`);
-                                return;
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.warn("Backend verification error:", err);
-                }
+            const data = await res.json();
 
-                // If offline testing mode or client verification
-                if (response && response.razorpay_payment_id) {
-                    const exactSchedule = self.getExactDrawTarget(pool);
-                    const generatedTickets = [];
-                    for (let q = 0; q < (orderData.quantity || 1); q++) {
-                        generatedTickets.push({
-                            id: `TCK_${Date.now()}_${q}`,
-                            serial: `ML-${pool.id + 10}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
-                            poolId: pool.id,
-                            poolName: pool.name,
-                            price: pool.price,
-                            prize: pool.prize,
-                            numbers: q === 0 ? [...self.selectedNumbers] : self.generateRandomNumbers(),
-                            exactDrawLabel: exactSchedule.exactLabel,
-                            drawTargetTimestamp: exactSchedule.timestamp,
-                            status: 'CONFIRMED'
-                        });
-                    }
-                    self.resetPayButton(totalCost);
-                    self.closeModal('buy-ticket-modal');
-                    self.handlePaymentSuccess(generatedTickets, orderData);
-                } else {
-                    self.resetPayButton(totalCost);
-                    self.showToast("❌ Payment verification failed. No ticket issued.");
+            if (data.success && data.paymentStatus === 'PAID' && data.ticketStatus === 'CONFIRMED' && data.tickets && data.tickets.length > 0) {
+                this.stopPendingOrderPolling();
+                this.closeModal('buy-ticket-modal');
+                const pendingBanner = document.getElementById('upi-pending-status-banner');
+                if (pendingBanner) pendingBanner.style.display = 'none';
+
+                this.handlePaymentSuccess(data.tickets, {
+                    orderId: data.orderId,
+                    amount: data.amount,
+                    poolId: this.currentBuyingPoolId,
+                    quantity: data.tickets.length
+                });
+                return;
+            } else if (data.status === 'EXPIRED' || data.paymentStatus === 'FAILED') {
+                this.stopPendingOrderPolling();
+                if (showToastNotice) this.showToast("❌ Payment order expired or failed. No ticket issued.");
+            } else {
+                if (showToastNotice) {
+                    this.showToast("⏳ Payment verification pending. Awaiting genuine bank settlement.");
                 }
             }
-        };
-
-        if (orderData.gatewayOrderId && orderData.gatewayOrderId.startsWith('order_') && !orderData.gatewayOrderId.startsWith('order_test_') && !orderData.gatewayOrderId.startsWith('order_fallback_')) {
-            options.order_id = orderData.gatewayOrderId;
-        }
-
-        try {
-            const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response) {
-                console.error("Razorpay Payment Failed:", response.error);
-                self.resetPayButton(totalCost);
-                self.showToast(`❌ Payment Failed: ${response.error?.description || 'Transaction cancelled'}. No ticket issued.`);
-            });
-            rzp.open();
-        } catch (err) {
-            console.error("Error opening Razorpay Checkout:", err);
-            this.resetPayButton(totalCost);
-            this.showToast("⚠️ Could not open Razorpay window. Please try again.");
+        } catch (e) {
+            if (showToastNotice) this.showToast("⚠️ Could not reach server to verify transaction status.");
         }
     }
 
     // Alias for backward compatibility
+    payAndConfirmTicket() {
+        return this.payWithUpiIntent();
+    }
+
     initiateTicketCheckout() {
-        return this.payAndConfirmTicket();
+        return this.payWithUpiIntent();
     }
 
     openDirectDepositGateway() {

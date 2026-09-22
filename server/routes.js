@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const db = require('./db');
-const paymentGateway = require('./gateway');
+const upiIntentManager = require('./gateway');
 const { LOTTERY_POOLS, getPoolById, calculateExactSchedule, generateRandomCombination } = require('./pools');
 
-// 1. Get Public Gateway Configuration
+// 1. Get Public Merchant Configuration
 router.get('/config', (req, res) => {
     res.json({
         success: true,
-        keyId: paymentGateway.getKeyId(),
-        merchantName: paymentGateway.getMerchantName(),
-        merchantVpa: paymentGateway.getMerchantVpa()
+        merchantName: upiIntentManager.getMerchantName(),
+        merchantVpa: upiIntentManager.getMerchantVpa(),
+        isOfficialMerchantApiConfigured: upiIntentManager.isOfficialMerchantApiConfigured()
     });
 });
 
@@ -27,7 +27,7 @@ router.get('/pools', (req, res) => {
     res.json({ success: true, pools });
 });
 
-// 3. Create Unique Gateway Payment Order (Strictly Server-Calculated Pricing)
+// 3. Create Unique Mobile UPI Intent Order (Authoritative Server Pricing)
 router.post('/orders/create', async (req, res) => {
     try {
         const { poolId, quantity = 1, selectedNumbers = [], userId = 'anon_user' } = req.body;
@@ -45,22 +45,18 @@ router.post('/orders/create', async (req, res) => {
         }
 
         const orderId = `ORD_${Date.now()}_${Math.random().toString(36).slice(-6).toUpperCase()}`;
+        const upiReference = `ML${Date.now().toString().slice(-8)}${Math.floor(1000 + Math.random() * 9000)}`;
         const expiresAt = Date.now() + 15 * 60 * 1000; // 15 Minutes Expiry
 
-        // Call Gateway Order API
-        const gatewayOrder = await paymentGateway.createOrder({
+        // Generate Standard Universal UPI Intent URI
+        const upiUri = upiIntentManager.generateUpiIntentUri({
             orderId,
+            tr: upiReference,
             amount: totalAmount,
-            currency: 'INR',
-            notes: {
-                poolId: pool.id,
-                poolName: pool.name,
-                quantity: qty,
-                userId: userId
-            }
+            note: `MegaLotto-${pool.name.replace(/[^a-zA-Z0-9]/g, '')}`
         });
 
-        // Store Order in DB with PENDING status
+        // Store Order in DB with status: PAYMENT_PENDING, ticketStatus: PAYMENT_PENDING
         const savedOrder = db.createOrder({
             orderId,
             userId,
@@ -68,44 +64,87 @@ router.post('/orders/create', async (req, res) => {
             quantity: qty,
             amount: totalAmount,
             selectedNumbers,
-            gatewayOrderId: gatewayOrder.gatewayOrderId,
+            upiReference,
             expiresAt
         });
-
-        // Dynamic Universal UPI String for this specific Order & Amount
-        const vpa = paymentGateway.getMerchantVpa();
-        const merchant = paymentGateway.getMerchantName();
-        const note = encodeURIComponent(`Mega Lotto Order ${orderId}`);
-        const upiUri = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(merchant)}&am=${totalAmount}&tr=${orderId}&tn=${note}&cu=INR`;
-        const qrStringUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUri)}`;
 
         res.json({
             success: true,
             orderId: savedOrder.order_id,
-            gatewayOrderId: gatewayOrder.gatewayOrderId,
+            upiReference: upiReference,
+            upiUri: upiUri,
             amount: totalAmount,
             currency: 'INR',
-            keyId: gatewayOrder.keyId,
-            merchantName: merchant,
+            merchantVpa: upiIntentManager.getMerchantVpa(),
+            merchantName: upiIntentManager.getMerchantName(),
             poolName: pool.name,
             quantity: qty,
-            expiresAt: expiresAt,
-            upiUri: upiUri,
-            qrCodeUrl: qrStringUrl
+            paymentStatus: savedOrder.payment_status,
+            ticketStatus: savedOrder.ticket_status,
+            expiresAt: expiresAt
         });
     } catch (error) {
-        console.error('Error creating order:', error);
+        console.error('Error creating UPI intent order:', error);
         res.status(500).json({ success: false, message: 'Server error while creating payment order' });
     }
 });
 
-// 4. Server-Side Payment Verification (Razorpay Checkout Verification)
+// 4. Check Order & Ticket Status (Strict Server Verification)
+router.get('/orders/:orderId/status', (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = db.getOrderById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        if (order.payment_status === 'PAID' && order.ticket_status === 'CONFIRMED') {
+            const tickets = db.getTicketsByOrderId(orderId);
+            return res.json({
+                success: true,
+                orderId: order.order_id,
+                paymentStatus: 'PAID',
+                ticketStatus: 'CONFIRMED',
+                status: 'CONFIRMED',
+                amount: order.amount,
+                tickets: tickets
+            });
+        }
+
+        if (order.expires_at < Date.now() && order.payment_status === 'PAYMENT_PENDING') {
+            db.updateOrderStatus(orderId, 'EXPIRED', 'NOT_CONFIRMED');
+            return res.json({
+                success: true,
+                orderId: order.order_id,
+                paymentStatus: 'EXPIRED',
+                ticketStatus: 'NOT_CONFIRMED',
+                status: 'EXPIRED',
+                message: 'Payment order has expired. No ticket issued.'
+            });
+        }
+
+        return res.json({
+            success: true,
+            orderId: order.order_id,
+            paymentStatus: order.payment_status,
+            ticketStatus: order.ticket_status,
+            status: 'PAYMENT_PENDING',
+            message: 'Payment is pending. No ticket issued until genuine bank transaction is verified on server.'
+        });
+    } catch (err) {
+        console.error('Order status query error:', err);
+        res.status(500).json({ success: false, message: 'Server error checking order status' });
+    }
+});
+
+// 5. Server-Side Payment Verification (No Faking)
 router.post('/payments/verify', async (req, res) => {
     try {
-        const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+        const { orderId } = req.body;
 
-        if (!orderId || !razorpayPaymentId) {
-            return res.status(400).json({ success: false, message: 'Missing payment details' });
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: 'Missing order ID' });
         }
 
         const order = db.getOrderById(orderId);
@@ -113,48 +152,28 @@ router.post('/payments/verify', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        if (order.status === 'SUCCESS') {
+        if (order.payment_status === 'PAID' && order.ticket_status === 'CONFIRMED') {
             const tickets = db.getTicketsByOrderId(orderId);
-            return res.json({ success: true, message: 'Payment already verified', status: 'SUCCESS', tickets });
+            return res.json({ success: true, message: 'Payment already verified', paymentStatus: 'PAID', ticketStatus: 'CONFIRMED', tickets });
         }
 
-        if (order.expires_at < Date.now()) {
-            db.updateOrderStatus(orderId, 'EXPIRED');
-            return res.status(400).json({ success: false, message: 'Payment order has expired', status: 'EXPIRED' });
-        }
+        // Query genuine merchant / banking transaction status
+        const queryResult = await upiIntentManager.queryTransactionStatus({
+            orderId: order.order_id,
+            upiReference: order.upi_reference,
+            amount: order.amount
+        });
 
-        // Verify Gateway HMAC Signature or Razorpay API
-        const gOrderId = razorpayOrderId || order.gateway_order_id;
-        let isValid = false;
-
-        // 1. Verify HMAC signature if signature is provided
-        if (razorpaySignature && gOrderId) {
-            isValid = paymentGateway.verifyPaymentSignature({
-                gatewayOrderId: gOrderId,
-                paymentId: razorpayPaymentId,
-                signature: razorpaySignature
+        if (!queryResult.verified) {
+            return res.json({
+                success: false,
+                paymentStatus: 'PAYMENT_PENDING',
+                ticketStatus: 'NOT_CONFIRMED',
+                message: queryResult.message || 'Payment not confirmed on banking rail. Ticket cannot be issued without verified transaction.'
             });
         }
 
-        // 2. Fetch payment capture status from Razorpay API
-        if (!isValid && razorpayPaymentId && razorpayPaymentId.startsWith('pay_')) {
-            const payment = await paymentGateway.fetchPaymentStatus(razorpayPaymentId);
-            if (payment && (payment.status === 'captured' || payment.status === 'authorized')) {
-                const expectedPaise = Math.round(order.amount * 100);
-                if (payment.amount >= expectedPaise) {
-                    isValid = true;
-                }
-            }
-        }
-
-        if (!isValid) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Real payment verification failed. No authentic captured payment found on Razorpay gateway.' 
-            });
-        }
-
-        // Generate verified tickets on server
+        // If genuine bank status confirms payment: issue tickets
         const pool = getPoolById(order.pool_id);
         const exactSchedule = calculateExactSchedule(pool);
         const ticketsToCreate = [];
@@ -172,24 +191,20 @@ router.post('/payments/verify', async (req, res) => {
                 prize: pool.prize,
                 numbers: ticketNums,
                 exactDrawLabel: exactSchedule.exactLabel,
-                drawTargetTimestamp: scheduleTimestamp(exactSchedule.timestamp)
+                drawTargetTimestamp: exactSchedule.timestamp
             });
         }
 
-        // Atomic DB Update
         const confirmedTickets = db.confirmOrderAndIssueTickets({
-            orderId,
-            gatewayPaymentId: razorpayPaymentId,
-            gatewaySignature: razorpaySignature || 'SANDBOX_VERIFIED',
+            orderId: order.order_id,
+            upiReference: order.upi_reference,
             tickets: ticketsToCreate
         });
 
         res.json({
             success: true,
-            status: 'SUCCESS',
-            message: 'Payment verified successfully and tickets confirmed',
-            orderId,
-            paymentId: razorpayPaymentId,
+            paymentStatus: 'PAID',
+            ticketStatus: 'CONFIRMED',
             tickets: confirmedTickets
         });
     } catch (error) {
@@ -198,71 +213,40 @@ router.post('/payments/verify', async (req, res) => {
     }
 });
 
-// Helper to ensure target timestamp is in future
-function scheduleTimestamp(target) {
-    if (target <= Date.now()) {
-        return Date.now() + 900 * 1000;
-    }
-    return target;
-}
-
-// 5. Gateway Webhook Endpoint (HMAC-SHA256 Signature Verified)
+// 6. Merchant / Bank Webhook Listener (Authentic Server Confirmation Rail)
 router.post('/payments/webhook', (req, res) => {
     try {
-        const signature = req.headers['x-razorpay-signature'];
-        const rawBody = req.rawBody; // Captured as Buffer by express raw body parser
+        const signature = req.headers['x-upi-signature'] || req.headers['x-webhook-signature'];
+        const rawBody = req.rawBody;
 
-        // Webhook signature verification
-        if (signature && rawBody) {
-            const isValid = paymentGateway.verifyWebhookSignature(rawBody, signature);
+        if (upiIntentManager.isOfficialMerchantApiConfigured() && signature && rawBody) {
+            const isValid = upiIntentManager.verifyMerchantWebhookSignature(rawBody, signature);
             if (!isValid) {
-                console.warn('Invalid Webhook Signature Received');
                 return res.status(400).send('Invalid signature');
             }
         }
 
-        const event = req.body;
-        const eventId = event.event_id || event.id || `EVT_${Date.now()}`;
-        const eventType = event.event || 'payment.captured';
+        const { orderId, upiReference, amount, status } = req.body;
+        const targetOrder = orderId ? db.getOrderById(orderId) : (upiReference ? db.getOrderByUpiRef(upiReference) : null);
 
-        // Extract payment & order entities
-        let paymentEntity = null;
-        if (event.payload && event.payload.payment && event.payload.payment.entity) {
-            paymentEntity = event.payload.payment.entity;
+        if (!targetOrder) {
+            return res.status(200).json({ status: 'order_not_found' });
         }
 
-        const gatewayOrderId = paymentEntity?.order_id;
-        const paymentId = paymentEntity?.id;
+        if (status === 'SUCCESS' || status === 'PAID') {
+            if (Number(amount) < Number(targetOrder.amount)) {
+                console.warn(`Amount mismatch for order ${targetOrder.order_id}: expected ${targetOrder.amount}, received ${amount}`);
+                db.updateOrderStatus(targetOrder.order_id, 'FAILED', 'NOT_CONFIRMED');
+                return res.status(400).json({ status: 'amount_mismatch' });
+            }
 
-        if (!gatewayOrderId) {
-            return res.status(200).json({ status: 'ignored_no_order_id' });
-        }
-
-        const order = db.getOrderByGatewayOrderId(gatewayOrderId);
-        if (!order) {
-            return res.status(200).json({ status: 'order_not_found_locally' });
-        }
-
-        // Check Idempotency (prevent duplicate ticket generation)
-        const isNew = db.logWebhookEvent({
-            eventId,
-            orderId: order.order_id,
-            eventType,
-            payload: event
-        });
-
-        if (!isNew || order.status === 'SUCCESS') {
-            return res.status(200).json({ status: 'already_processed_idempotent' });
-        }
-
-        if (eventType === 'payment.captured' || eventType === 'order.paid') {
-            const pool = getPoolById(order.pool_id);
+            const pool = getPoolById(targetOrder.pool_id);
             const exactSchedule = calculateExactSchedule(pool);
             const ticketsToCreate = [];
 
-            for (let q = 0; q < order.quantity; q++) {
+            for (let q = 0; q < targetOrder.quantity; q++) {
                 const ticketSerial = `ML-${pool.id + 10}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
-                const ticketNums = q === 0 ? order.selected_numbers : generateRandomCombination();
+                const ticketNums = q === 0 ? targetOrder.selected_numbers : generateRandomCombination();
 
                 ticketsToCreate.push({
                     ticketId: `TCK_${Date.now()}_${q}`,
@@ -273,71 +257,45 @@ router.post('/payments/webhook', (req, res) => {
                     prize: pool.prize,
                     numbers: ticketNums,
                     exactDrawLabel: exactSchedule.exactLabel,
-                    drawTargetTimestamp: scheduleTimestamp(exactSchedule.timestamp)
+                    drawTargetTimestamp: exactSchedule.timestamp
                 });
             }
 
-            db.confirmOrderAndIssueTickets({
-                orderId: order.order_id,
-                gatewayPaymentId: paymentId || `PAY_${Date.now()}`,
-                gatewaySignature: signature || 'WEBHOOK_VERIFIED',
+            const confirmedTickets = db.confirmOrderAndIssueTickets({
+                orderId: targetOrder.order_id,
+                upiReference: upiReference || targetOrder.upi_reference,
                 tickets: ticketsToCreate
             });
+
+            return res.status(200).json({ status: 'confirmed', tickets: confirmedTickets.length });
         }
 
-        res.status(200).json({ success: true, status: 'processed' });
-    } catch (error) {
-        console.error('Webhook processing error:', error);
-        res.status(500).json({ success: false });
+        return res.status(200).json({ status: 'processed' });
+    } catch (err) {
+        console.error('Webhook processing error:', err);
+        res.status(500).send('Server error');
     }
 });
 
-// 6. Polling Status Endpoint for Frontend
-router.get('/payments/:orderId/status', (req, res) => {
-    const { orderId } = req.params;
-    const order = db.getOrderById(orderId);
-
-    if (!order) {
-        return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-
-    // Auto-expire if pending and expired
-    if (order.status === 'PENDING' && order.expires_at < Date.now()) {
-        db.updateOrderStatus(orderId, 'EXPIRED');
-        return res.json({
-            success: true,
-            status: 'EXPIRED',
-            orderId: order.order_id,
-            message: 'Payment order has expired'
-        });
-    }
-
-    let tickets = [];
-    if (order.status === 'SUCCESS') {
-        tickets = db.getTicketsByOrderId(orderId);
-    }
-
-    res.json({
-        success: true,
-        status: order.status,
-        orderId: order.order_id,
-        amount: order.amount,
-        paidAt: order.paid_at,
-        tickets: tickets
-    });
-});
-
-// 7. Get User's Confirmed Tickets from Server DB
+// 7. Get Tickets for User
 router.get('/tickets/user/:userId', (req, res) => {
-    const { userId } = req.params;
-    const tickets = db.getTicketsByUserId(userId || 'anon_user');
-    res.json({ success: true, tickets });
+    try {
+        const { userId } = req.params;
+        const tickets = db.getTicketsByUserId(userId);
+        res.json({ success: true, tickets });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Error retrieving user tickets' });
+    }
 });
 
-// 8. Admin Audit Orders Ledger
+// 8. Admin/Owner Order Inspection
 router.get('/admin/orders', (req, res) => {
-    const orders = db.getAllOrders(100);
-    res.json({ success: true, orders });
+    try {
+        const orders = db.getAllOrders(50);
+        res.json({ success: true, orders });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Error fetching orders' });
+    }
 });
 
 module.exports = router;
