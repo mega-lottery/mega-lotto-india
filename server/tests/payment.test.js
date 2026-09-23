@@ -1,10 +1,11 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const db = require('../db');
-const upiIntentManager = require('../gateway');
+const paymentGateway = require('../gateway');
 const { getPoolById, calculateExactSchedule } = require('../pools');
 
 console.log('----------------------------------------------------');
-console.log('🧪 RUNNING MOBILE-FIRST REAL UPI INTENT TEST SUITE');
+console.log('🧪 RUNNING PAYMENT GATEWAY & SECURE TICKETING SUITE');
 console.log('----------------------------------------------------');
 
 async function runTests() {
@@ -32,29 +33,45 @@ async function runTests() {
         assert.strictEqual(serverComputedTotal, 57, '3 tickets in Pool 0 must strictly cost ₹57');
     });
 
-    // 2. Test NPCI Universal UPI DeepLink Format
-    test('Scenario 2: Standard NPCI UPI Intent URI generated with correct VPA, amount, tr reference, and note', () => {
-        const orderId = 'ORD_TEST_999';
-        const tr = 'ML_REF_12345';
-        const amount = 19.00;
-
-        const upiUri = upiIntentManager.generateUpiIntentUri({
-            orderId,
-            tr,
-            amount
-        });
-
-        assert(upiUri.startsWith('upi://pay?'), 'Must start with standard upi://pay scheme');
-        assert(upiUri.includes('pa='), 'Must include payee VPA (pa)');
-        assert(upiUri.includes('pn='), 'Must include payee name (pn)');
-        assert(upiUri.includes('am=19.00'), 'Must include exact 2-decimal amount (am=19.00)');
-        assert(upiUri.includes('cu=INR'), 'Must include INR currency (cu=INR)');
-        assert(upiUri.includes('tr=ML_REF_12345'), 'Must include unique transaction reference (tr)');
-        assert(upiUri.includes('tn=Ticket-ORD_TEST_999'), 'Must include transaction note with order ID (tn)');
+    // 2. Test Privacy: Public config does not expose personal UPI ID or personal name
+    test('Scenario 2: Gateway public config conceals personal VPA and provides business merchant info', () => {
+        const config = paymentGateway.getPublicConfig();
+        assert.strictEqual(config.merchantName, 'MEGA LOTTO INDIA');
+        assert.strictEqual(config.isGatewayConfigured, true);
+        assert.strictEqual(typeof config.razorpayKeyId, 'string');
+        assert.strictEqual(config.merchantVpa, undefined, 'Must not expose personal VPA in public config');
     });
 
-    // 3. Test Order Creation in Database with PAYMENT_PENDING
-    test('Scenario 3: Unique order is created in DB with PAYMENT_PENDING status', () => {
+    // 3. Test Cryptographic Signature Verification
+    test('Scenario 3: HMAC SHA-256 signature verification validates authentic gateway callback', () => {
+        const secret = process.env.RAZORPAY_KEY_SECRET || 's9x3W5eBw1YvX1948zQk8LmQ';
+        const orderId = 'order_test_999';
+        const paymentId = 'pay_test_888';
+        
+        const validSignature = crypto
+            .createHmac('sha256', secret)
+            .update(`${orderId}|${paymentId}`)
+            .digest('hex');
+
+        const isValid = paymentGateway.verifyPaymentSignature({
+            razorpayOrderId: orderId,
+            razorpayPaymentId: paymentId,
+            razorpaySignature: validSignature
+        });
+
+        assert.strictEqual(isValid, true, 'Valid HMAC signature must verify');
+
+        const isInvalid = paymentGateway.verifyPaymentSignature({
+            razorpayOrderId: orderId,
+            razorpayPaymentId: paymentId,
+            razorpaySignature: 'tampered_signature_hex'
+        });
+
+        assert.strictEqual(isInvalid, false, 'Tampered signature must be rejected');
+    });
+
+    // 4. Test Order Creation in Database with PAYMENT_PENDING
+    test('Scenario 4: Unique order is created in DB with PAYMENT_PENDING status', () => {
         const orderId = `ORD_TEST_${Date.now()}_1`;
         const upiReference = `ML${Date.now().toString().slice(-6)}`;
         const expiresAt = Date.now() + 900000;
@@ -76,8 +93,8 @@ async function runTests() {
         assert.strictEqual(order.amount, 19, 'Order amount must be 19');
     });
 
-    // 4. Test Unconfirmed Order Does Not Return Tickets
-    test('Scenario 4: User returning without confirmed bank transaction does NOT get tickets issued', () => {
+    // 5. Test Unconfirmed Order Does Not Return Tickets
+    test('Scenario 5: User returning without confirmed payment does NOT get tickets issued', () => {
         const orderId = `ORD_TEST_${Date.now()}_unpaid`;
         db.createOrder({
             orderId,
@@ -98,8 +115,8 @@ async function runTests() {
         assert.strictEqual(issuedTickets.length, 0, 'Zero tickets must be issued for unverified order');
     });
 
-    // 5. Test Atomic Ticket Confirmation upon Verified Payment
-    test('Scenario 5: Verified transaction confirms order (PAID/CONFIRMED) and issues tickets atomically in DB', () => {
+    // 6. Test Atomic Ticket Confirmation upon Verified Payment
+    test('Scenario 6: Verified transaction confirms order (PAID/CONFIRMED) and issues tickets atomically in DB', () => {
         const orderId = `ORD_TEST_${Date.now()}_2`;
         const upiRef = `ML_PAID_${Date.now()}`;
         db.createOrder({
@@ -119,7 +136,7 @@ async function runTests() {
             tickets: [
                 {
                     ticketId: `TCK_TEST_${Date.now()}_0`,
-                    serial: 'ML-10-TEST-0001',
+                    serial: `ML-10-TEST-${Date.now()}-0001`,
                     poolId: 0,
                     poolName: '₹19 Pocket Booster',
                     price: 19,
@@ -130,7 +147,7 @@ async function runTests() {
                 },
                 {
                     ticketId: `TCK_TEST_${Date.now()}_1`,
-                    serial: 'ML-10-TEST-0002',
+                    serial: `ML-10-TEST-${Date.now()}-0002`,
                     poolId: 0,
                     poolName: '₹19 Pocket Booster',
                     price: 19,
@@ -148,8 +165,8 @@ async function runTests() {
         assert.strictEqual(updatedOrder.ticket_status, 'CONFIRMED', 'Ticket status must be CONFIRMED');
     });
 
-    // 6. Test Idempotency
-    test('Scenario 6: Webhook / confirmation idempotency prevents duplicate ticket generation', () => {
+    // 7. Test Idempotency
+    test('Scenario 7: Webhook / confirmation idempotency prevents duplicate ticket generation', () => {
         const orderId = `ORD_TEST_${Date.now()}_idempotent`;
         const upiRef = `ML_IDEM_${Date.now()}`;
 
@@ -169,8 +186,8 @@ async function runTests() {
             orderId,
             upiReference: upiRef,
             tickets: [{
-                ticketId: `TCK_IDEM_${Date.now()}`,
-                serial: 'ML-10-IDEM-001',
+                ticketId: `TCK_IDEM_${Date.now()}_${Math.random()}`,
+                serial: `ML-10-IDEM-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
                 poolId: 0,
                 poolName: '₹19 Pocket Booster',
                 price: 19,
@@ -186,8 +203,8 @@ async function runTests() {
             orderId,
             upiReference: upiRef,
             tickets: [{
-                ticketId: `TCK_IDEM_DUP_${Date.now()}`,
-                serial: 'ML-10-IDEM-DUP',
+                ticketId: `TCK_IDEM_DUP_${Date.now()}_${Math.random()}`,
+                serial: `ML-10-IDEM-DUP-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
                 poolId: 0,
                 poolName: '₹19 Pocket Booster',
                 price: 19,

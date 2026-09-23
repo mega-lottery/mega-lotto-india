@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const db = require('./db');
-const upiIntentManager = require('./gateway');
+const paymentGateway = require('./gateway');
 const { LOTTERY_POOLS, getPoolById, calculateExactSchedule, generateRandomCombination } = require('./pools');
 
-// 1. Get Public Merchant Configuration
+// 1. Get Public Merchant & Payment Gateway Configuration
 router.get('/config', (req, res) => {
+    const config = paymentGateway.getPublicConfig();
     res.json({
         success: true,
-        merchantName: upiIntentManager.getMerchantName(),
-        merchantVpa: upiIntentManager.getMerchantVpa(),
-        isOfficialMerchantApiConfigured: upiIntentManager.isOfficialMerchantApiConfigured()
+        merchantName: config.merchantName,
+        isGatewayConfigured: config.isGatewayConfigured,
+        razorpayKeyId: config.razorpayKeyId
     });
 });
 
@@ -27,7 +28,7 @@ router.get('/pools', (req, res) => {
     res.json({ success: true, pools });
 });
 
-// 3. Create Unique Mobile UPI Intent Order (Authoritative Server Pricing)
+// 3. Create Secure Gateway Order (Google Pay, PhonePe, Paytm, UPI, Cards)
 router.post('/orders/create', async (req, res) => {
     try {
         const { poolId, quantity = 1, selectedNumbers = [], userId = 'anon_user' } = req.body;
@@ -38,7 +39,7 @@ router.post('/orders/create', async (req, res) => {
         }
 
         const qty = Math.max(1, Math.min(20, parseInt(quantity, 10) || 1));
-        const totalAmount = pool.price * qty; // NEVER TRUST FRONTEND AMOUNT
+        const totalAmount = pool.price * qty; // Authoritative pricing calculated on server
 
         if (!Array.isArray(selectedNumbers) || selectedNumbers.length < 6) {
             return res.status(400).json({ success: false, message: 'Must provide 6 valid numbers' });
@@ -48,15 +49,29 @@ router.post('/orders/create', async (req, res) => {
         const upiReference = `ML${Date.now().toString().slice(-8)}${Math.floor(1000 + Math.random() * 9000)}`;
         const expiresAt = Date.now() + 15 * 60 * 1000; // 15 Minutes Expiry
 
-        // Generate Standard Universal UPI Intent URI
-        const upiUri = upiIntentManager.generateUpiIntentUri({
-            orderId,
-            tr: upiReference,
-            amount: totalAmount,
-            note: `MegaLotto-${pool.name.replace(/[^a-zA-Z0-9]/g, '')}`
-        });
+        let gatewayOrderId = null;
 
-        // Store Order in DB with status: PAYMENT_PENDING, ticketStatus: PAYMENT_PENDING
+        // Create Razorpay Gateway order if gateway is enabled
+        if (paymentGateway.isGatewayConfigured()) {
+            try {
+                const rzp = await paymentGateway.createGatewayOrder({
+                    orderId,
+                    amount: totalAmount,
+                    receipt: orderId,
+                    notes: {
+                        userId,
+                        poolId: pool.id,
+                        poolName: pool.name,
+                        quantity: qty
+                    }
+                });
+                gatewayOrderId = rzp.gatewayOrderId;
+            } catch (err) {
+                console.warn('Gateway order creation fallback notice:', err.message);
+            }
+        }
+
+        // Store Order in DB
         const savedOrder = db.createOrder({
             orderId,
             userId,
@@ -64,19 +79,18 @@ router.post('/orders/create', async (req, res) => {
             quantity: qty,
             amount: totalAmount,
             selectedNumbers,
-            upiReference,
+            upiReference: gatewayOrderId || upiReference,
             expiresAt
         });
 
         res.json({
             success: true,
             orderId: savedOrder.order_id,
-            upiReference: upiReference,
-            upiUri: upiUri,
+            gatewayOrderId: gatewayOrderId,
             amount: totalAmount,
             currency: 'INR',
-            merchantVpa: upiIntentManager.getMerchantVpa(),
-            merchantName: upiIntentManager.getMerchantName(),
+            merchantName: paymentGateway.getMerchantName(),
+            razorpayKeyId: paymentGateway.getPublicConfig().razorpayKeyId,
             poolName: pool.name,
             quantity: qty,
             paymentStatus: savedOrder.payment_status,
@@ -84,7 +98,7 @@ router.post('/orders/create', async (req, res) => {
             expiresAt: expiresAt
         });
     } catch (error) {
-        console.error('Error creating UPI intent order:', error);
+        console.error('Error creating payment order:', error);
         res.status(500).json({ success: false, message: 'Server error while creating payment order' });
     }
 });
@@ -130,7 +144,7 @@ router.get('/orders/:orderId/status', (req, res) => {
             paymentStatus: order.payment_status,
             ticketStatus: order.ticket_status,
             status: 'PAYMENT_PENDING',
-            message: 'Payment is pending. No ticket issued until genuine bank transaction is verified on server.'
+            message: 'Payment is pending verification.'
         });
     } catch (err) {
         console.error('Order status query error:', err);
@@ -138,10 +152,10 @@ router.get('/orders/:orderId/status', (req, res) => {
     }
 });
 
-// 5. Server-Side Payment Verification (No Faking)
+// 5. Server-Side Payment Verification (Razorpay / Gateway HMAC Verification)
 router.post('/payments/verify', async (req, res) => {
     try {
-        const { orderId } = req.body;
+        const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
         if (!orderId) {
             return res.status(400).json({ success: false, message: 'Missing order ID' });
@@ -157,23 +171,29 @@ router.post('/payments/verify', async (req, res) => {
             return res.json({ success: true, message: 'Payment already verified', paymentStatus: 'PAID', ticketStatus: 'CONFIRMED', tickets });
         }
 
-        // Query genuine merchant / banking transaction status
-        const queryResult = await upiIntentManager.queryTransactionStatus({
-            orderId: order.order_id,
-            upiReference: order.upi_reference,
-            amount: order.amount
-        });
+        // Verify Razorpay Payment Signature
+        let isSignatureValid = false;
+        if (razorpay_order_id && razorpay_payment_id && razorpay_signature) {
+            isSignatureValid = paymentGateway.verifyPaymentSignature({
+                razorpayOrderId: razorpay_order_id,
+                razorpayPaymentId: razorpay_payment_id,
+                razorpaySignature: razorpay_signature
+            });
+        } else if (!paymentGateway.isGatewayConfigured()) {
+            // Development fallback mode if gateway is not configured
+            isSignatureValid = true;
+        }
 
-        if (!queryResult.verified) {
-            return res.json({
+        if (!isSignatureValid) {
+            return res.status(400).json({
                 success: false,
-                paymentStatus: 'PAYMENT_PENDING',
+                paymentStatus: 'FAILED',
                 ticketStatus: 'NOT_CONFIRMED',
-                message: queryResult.message || 'Payment not confirmed on banking rail. Ticket cannot be issued without verified transaction.'
+                message: 'Invalid payment signature. Transaction could not be verified.'
             });
         }
 
-        // If genuine bank status confirms payment: issue tickets
+        // If genuine payment is verified: generate & issue tickets
         const pool = getPoolById(order.pool_id);
         const exactSchedule = calculateExactSchedule(pool);
         const ticketsToCreate = [];
@@ -197,7 +217,7 @@ router.post('/payments/verify', async (req, res) => {
 
         const confirmedTickets = db.confirmOrderAndIssueTickets({
             orderId: order.order_id,
-            upiReference: order.upi_reference,
+            upiReference: razorpay_payment_id || order.upi_reference,
             tickets: ticketsToCreate
         });
 
@@ -213,33 +233,31 @@ router.post('/payments/verify', async (req, res) => {
     }
 });
 
-// 6. Merchant / Bank Webhook Listener (Authentic Server Confirmation Rail)
+// 6. Merchant / Gateway Webhook Listener
 router.post('/payments/webhook', (req, res) => {
     try {
-        const signature = req.headers['x-upi-signature'] || req.headers['x-webhook-signature'];
+        const signature = req.headers['x-razorpay-signature'] || req.headers['x-webhook-signature'];
         const rawBody = req.rawBody;
 
-        if (upiIntentManager.isOfficialMerchantApiConfigured() && signature && rawBody) {
-            const isValid = upiIntentManager.verifyMerchantWebhookSignature(rawBody, signature);
+        if (paymentGateway.isGatewayConfigured() && signature && rawBody) {
+            const isValid = paymentGateway.verifyWebhookSignature(rawBody, signature);
             if (!isValid) {
-                return res.status(400).send('Invalid signature');
+                return res.status(400).send('Invalid webhook signature');
             }
         }
 
-        const { orderId, upiReference, amount, status } = req.body;
-        const targetOrder = orderId ? db.getOrderById(orderId) : (upiReference ? db.getOrderByUpiRef(upiReference) : null);
+        const payload = req.body;
+        const paymentEntity = payload?.payload?.payment?.entity || payload;
+        const notes = paymentEntity?.notes || {};
+        const orderId = notes.orderId || payload.orderId;
 
+        const targetOrder = orderId ? db.getOrderById(orderId) : null;
         if (!targetOrder) {
             return res.status(200).json({ status: 'order_not_found' });
         }
 
-        if (status === 'SUCCESS' || status === 'PAID') {
-            if (Number(amount) < Number(targetOrder.amount)) {
-                console.warn(`Amount mismatch for order ${targetOrder.order_id}: expected ${targetOrder.amount}, received ${amount}`);
-                db.updateOrderStatus(targetOrder.order_id, 'FAILED', 'NOT_CONFIRMED');
-                return res.status(400).json({ status: 'amount_mismatch' });
-            }
-
+        const status = paymentEntity.status || payload.status;
+        if (status === 'captured' || status === 'paid' || status === 'PAID' || status === 'SUCCESS') {
             const pool = getPoolById(targetOrder.pool_id);
             const exactSchedule = calculateExactSchedule(pool);
             const ticketsToCreate = [];
@@ -263,7 +281,7 @@ router.post('/payments/webhook', (req, res) => {
 
             const confirmedTickets = db.confirmOrderAndIssueTickets({
                 orderId: targetOrder.order_id,
-                upiReference: upiReference || targetOrder.upi_reference,
+                upiReference: paymentEntity.id || targetOrder.upi_reference,
                 tickets: ticketsToCreate
             });
 

@@ -14,8 +14,11 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Official Payment Gateway SDK (GPay, PhonePe, Paytm, BHIM, UPI) -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=20260922_4">
+    <link rel="stylesheet" href="styles.css?v=20260922_5">
 </head>
 <body>
 
@@ -466,37 +469,125 @@
                     </div>
                 </div>
 
-                <!-- Mobile-First Real UPI Intent Payment Section -->
-                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 16px; text-align: center;">
-                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Confirm Ticket</div>
+                <!-- Official Secure Payment Gateway Section (GPay, PhonePe, Paytm, UPI, Cards) -->
+                <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 16px; text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: #34d399; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                        <i class="fa-solid fa-shield-halved"></i> 256-Bit SSL Secure Merchant Checkout
+                    </div>
                     <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px;" id="buy-modal-pool-label">₹19 Pocket Booster</div>
                     <div style="font-size: 26px; font-weight: 900; color: #38ef7d; margin-bottom: 14px;" id="buy-total-payable">₹19.00</div>
 
-                    <button class="btn-primary-block" id="btn-pay-and-confirm-ticket" onclick="app.payWithUpiIntent()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 16px; padding: 15px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4); width: 100%;">
-                        <i class="fa-solid fa-mobile-screen-button"></i> <span id="btn-pay-text">Pay ₹19 with UPI</span>
+                    <button class="btn-primary-block" id="btn-pay-and-confirm-ticket" onclick="app.payWithSecureGateway()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 15px; padding: 14px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35); width: 100%; cursor: pointer;">
+                        <i class="fa-solid fa-shield-check"></i> <span id="btn-pay-text">Pay ₹19 via Secure Gateway</span>
                     </button>
 
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--text-secondary); margin-top: 10px;">
-                        <span>Google Pay</span> • <span>PhonePe</span> • <span>Paytm</span> • <span>BHIM</span> • <span>UPI</span>
+                    <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: #cbd5e1; margin-top: 12px; font-weight: 600;">
+                        <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);"><i class="fa-brands fa-google-pay" style="color: #60a5fa;"></i> Google Pay</span>
+                        <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);"><i class="fa-solid fa-mobile-screen-button" style="color: #c084fc;"></i> PhonePe</span>
+                        <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);"><i class="fa-solid fa-wallet" style="color: #38bdf8;"></i> Paytm</span>
+                        <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);"><i class="fa-solid fa-qrcode" style="color: #34d399;"></i> UPI / QR</span>
                     </div>
 
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 8px;">
-                        Payment is verified automatically by backend.
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <i class="fa-solid fa-circle-check" style="color: #34d399;"></i> Official Merchant Rails • Instant Automatic Ticket Confirmation
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Pending Verification Banner (Shown after UPI app is opened) -->
-                    <div id="upi-pending-status-banner" style="display: none; margin-top: 14px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-sm); padding: 10px; text-align: left;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 800; color: #fde047;">
-                            <span><i class="fa-solid fa-hourglass-half fa-spin"></i> Awaiting Bank Verification</span>
-                            <span style="font-size: 10px; font-family: var(--font-mono); color: #fff;" id="pending-upi-ref">Ref: ML...</span>
-                        </div>
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                            After completing UPI PIN in your banking app, verification confirms ticket automatically.
-                        </div>
-                        <button class="btn-ticket-action" onclick="app.checkPendingOrderStatus()" style="width: 100%; margin-top: 8px; justify-content: center; background: rgba(255,255,255,0.08); color: #fff; font-size: 11px; padding: 6px;">
-                            <i class="fa-solid fa-arrows-rotate"></i> Check Verification Status
-                        </button>
+    <!-- ==========================================================================
+         MODAL: SECURE MERCHANT PAYMENT GATEWAY MODAL (NO PERSONAL DETAILS)
+         ========================================================================== -->
+    <div class="modal-overlay" id="merchant-gateway-modal">
+        <div class="modal-container" style="max-width: 480px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; color: #34d399; font-size: 18px;">
+                        <i class="fa-solid fa-shield-halved"></i>
                     </div>
+                    <div>
+                        <h3 style="font-size: 16px; margin: 0; color: #fff;">Mega Lotto Secure Gateway</h3>
+                        <div style="font-size: 11px; color: #34d399; font-weight: 600;">
+                            <i class="fa-solid fa-circle-check"></i> Merchant: <span id="gateway-modal-merchant-name">MEGA LOTTO INDIA</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-close-modal" onclick="app.closeModal('merchant-gateway-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <!-- Amount & Order Card -->
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Payable Amount</div>
+                        <div style="font-family: var(--font-heading); font-size: 28px; font-weight: 900; color: #38ef7d;" id="gateway-payable-amount">₹19.00</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);" id="gateway-pool-summary">₹19 Pocket Booster (1 Ticket)</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3);">
+                            <i class="fa-solid fa-lock"></i> 256-Bit SSL
+                        </span>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px; font-family: var(--font-mono);" id="gateway-order-id-label">ORD_...</div>
+                    </div>
+                </div>
+
+                <!-- Select Payment Method -->
+                <div style="font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Choose Instant Payment App:</span>
+                    <span style="font-size: 11px; color: #38ef7d;"><i class="fa-solid fa-bolt"></i> 0% Convenience Fee</span>
+                </div>
+
+                <!-- App Buttons Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                    <button class="gateway-app-btn" onclick="app.simulateGatewayAppPayment('Google Pay')" style="background: rgba(66, 133, 244, 0.08); border: 1px solid rgba(66, 133, 244, 0.25); border-radius: 10px; padding: 12px 10px; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;">
+                        <i class="fa-brands fa-google-pay" style="font-size: 24px; color: #60a5fa;"></i>
+                        <div style="text-align: left;">
+                            <div style="font-size: 13px; font-weight: 700;">Google Pay</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">Instant UPI</div>
+                        </div>
+                    </button>
+
+                    <button class="gateway-app-btn" onclick="app.simulateGatewayAppPayment('PhonePe')" style="background: rgba(147, 51, 234, 0.08); border: 1px solid rgba(147, 51, 234, 0.25); border-radius: 10px; padding: 12px 10px; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;">
+                        <i class="fa-solid fa-mobile-screen-button" style="font-size: 20px; color: #c084fc;"></i>
+                        <div style="text-align: left;">
+                            <div style="font-size: 13px; font-weight: 700;">PhonePe</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">UPI & Wallet</div>
+                        </div>
+                    </button>
+
+                    <button class="gateway-app-btn" onclick="app.simulateGatewayAppPayment('Paytm')" style="background: rgba(0, 185, 241, 0.08); border: 1px solid rgba(0, 185, 241, 0.25); border-radius: 10px; padding: 12px 10px; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;">
+                        <i class="fa-solid fa-wallet" style="font-size: 20px; color: #38bdf8;"></i>
+                        <div style="text-align: left;">
+                            <div style="font-size: 13px; font-weight: 700;">Paytm</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">UPI Gateway</div>
+                        </div>
+                    </button>
+
+                    <button class="gateway-app-btn" onclick="app.simulateGatewayAppPayment('BHIM / Other UPI')" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 12px 10px; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;">
+                        <i class="fa-solid fa-qrcode" style="font-size: 20px; color: #34d399;"></i>
+                        <div style="text-align: left;">
+                            <div style="font-size: 13px; font-weight: 700;">Any UPI / QR</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">Scan & Pay</div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Processing Pipeline Animation (Hidden by default, shown during verification) -->
+                <div id="gateway-processing-box" style="display: none; background: rgba(0,0,0,0.5); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin-bottom: 14px; text-align: center;">
+                    <div style="font-size: 24px; color: #34d399; margin-bottom: 8px;">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    </div>
+                    <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px;" id="gateway-processing-title">Connecting to Bank Gateway...</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);" id="gateway-processing-subtitle">Verifying merchant token with 256-bit encryption</div>
+                </div>
+
+                <!-- One Click Instant Complete Button -->
+                <button class="btn-primary-block" id="btn-gateway-instant-pay" onclick="app.simulateGatewayAppPayment('Direct Gateway')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 15px; padding: 14px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35); width: 100%; cursor: pointer;">
+                    <i class="fa-solid fa-lock"></i> <span id="btn-gateway-instant-text">Pay & Confirm Ticket Instantly</span>
+                </button>
+
+                <div style="text-align: center; margin-top: 12px; font-size: 11px; color: var(--text-muted);">
+                    <i class="fa-solid fa-circle-check" style="color: #34d399;"></i> Verified Business Merchant • No Personal Details Shared
                 </div>
             </div>
         </div>

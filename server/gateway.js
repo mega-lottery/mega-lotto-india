@@ -1,97 +1,131 @@
 const crypto = require('crypto');
+const Razorpay = require('razorpay');
 require('dotenv').config();
 
-const merchantVpa = process.env.MERCHANT_VPA || 'mrvikash@fam';
 const merchantName = process.env.MERCHANT_NAME || 'MEGA LOTTO INDIA';
-const merchantApiKey = process.env.MERCHANT_UPI_API_KEY || '';
-const merchantApiSecret = process.env.MERCHANT_UPI_API_SECRET || '';
-const webhookSecret = process.env.UPI_WEBHOOK_SECRET || '';
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
+const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-const upiIntentManager = {
-    getMerchantVpa() {
-        return merchantVpa;
-    },
+// Initialize Razorpay instance if credentials are present
+let razorpayClient = null;
+if (razorpayKeyId && razorpayKeySecret) {
+    try {
+        razorpayClient = new Razorpay({
+            key_id: razorpayKeyId,
+            key_secret: razorpayKeySecret
+        });
+    } catch (err) {
+        console.error('Error initializing Razorpay client:', err);
+    }
+}
 
+const paymentGatewayManager = {
     getMerchantName() {
         return merchantName;
     },
 
-    // Check if an official automated UPI Merchant Status API / Bank Webhook is configured
-    isOfficialMerchantApiConfigured() {
-        return Boolean(merchantApiKey && merchantApiSecret);
+    isGatewayConfigured() {
+        return Boolean(razorpayKeyId && razorpayKeySecret);
+    },
+
+    getPublicConfig() {
+        return {
+            merchantName: merchantName,
+            isGatewayConfigured: this.isGatewayConfigured(),
+            razorpayKeyId: razorpayKeyId ? razorpayKeyId : null
+        };
     },
 
     /**
-     * Generate Standard NPCI UPI Intent URI
+     * Create Razorpay Gateway Order for GPay, PhonePe, Paytm, UPI, Cards, Netbanking
      * @param {Object} params
-     * @param {string} params.orderId - Unique Order ID
-     * @param {string} params.tr - Unique Transaction Reference ID
-     * @param {number} params.amount - Amount in INR (e.g. 19.00)
-     * @param {string} [params.note] - Optional custom note
-     * @returns {string} Standard UPI URI (e.g. upi://pay?pa=...&pn=...&am=...&cu=INR&tr=...&tn=...)
+     * @param {string} params.orderId - Internal System Order ID
+     * @param {number} params.amount - Total amount in INR
+     * @param {string} [params.receipt] - Receipt ID
+     * @param {Object} [params.notes] - Custom metadata
+     * @returns {Promise<Object>}
      */
-    generateUpiIntentUri({ orderId, tr, amount, note = null }) {
-        const formattedAmount = Number(amount).toFixed(2);
-        const transactionNote = encodeURIComponent(note || `Ticket-${orderId}`);
-        const encodedMerchantName = encodeURIComponent(merchantName);
-        const encodedVpa = encodeURIComponent(merchantVpa);
+    async createGatewayOrder({ orderId, amount, receipt, notes = {} }) {
+        if (!this.isGatewayConfigured() || !razorpayClient) {
+            throw new Error('Payment gateway is not configured with active credentials.');
+        }
 
-        // Standard NPCI Universal UPI DeepLink Format
-        return `upi://pay?pa=${encodedVpa}&pn=${encodedMerchantName}&am=${formattedAmount}&cu=INR&tr=${encodeURIComponent(tr)}&tn=${transactionNote}`;
+        const amountInPaise = Math.round(Number(amount) * 100);
+
+        try {
+            const rzpOrder = await razorpayClient.orders.create({
+                amount: amountInPaise,
+                currency: 'INR',
+                receipt: receipt || orderId,
+                notes: {
+                    orderId: orderId,
+                    ...notes
+                }
+            });
+
+            return {
+                gatewayOrderId: rzpOrder.id,
+                amount: rzpOrder.amount,
+                currency: rzpOrder.currency,
+                receipt: rzpOrder.receipt
+            };
+        } catch (error) {
+            console.error('Razorpay order creation error:', error);
+            throw error;
+        }
     },
 
     /**
-     * Verify Webhook Signature from official merchant banking partner
-     * @param {Buffer|string} rawBody 
-     * @param {string} signature 
+     * Cryptographically verify Razorpay Payment Signature
+     * @param {Object} params
+     * @param {string} params.razorpayOrderId
+     * @param {string} params.razorpayPaymentId
+     * @param {string} params.razorpaySignature
      * @returns {boolean}
      */
-    verifyMerchantWebhookSignature(rawBody, signature) {
-        if (!webhookSecret || !signature || !rawBody) {
+    verifyPaymentSignature({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) {
+        if (!razorpayKeySecret || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
             return false;
         }
 
         try {
-            const hmac = crypto.createHmac('sha256', webhookSecret);
-            hmac.update(rawBody);
-            const expected = hmac.digest('hex');
+            const body = razorpayOrderId + '|' + razorpayPaymentId;
+            const expectedSignature = crypto
+                .createHmac('sha256', razorpayKeySecret)
+                .update(body.toString())
+                .digest('hex');
+
+            return expectedSignature === razorpaySignature;
+        } catch (err) {
+            console.error('Signature verification error:', err);
+            return false;
+        }
+    },
+
+    /**
+     * Verify Webhook Signature from Razorpay
+     * @param {Buffer|string} rawBody 
+     * @param {string} signature 
+     * @returns {boolean}
+     */
+    verifyWebhookSignature(rawBody, signature) {
+        const secret = razorpayWebhookSecret || razorpayKeySecret;
+        if (!secret || !signature || !rawBody) {
+            return false;
+        }
+
+        try {
+            const expected = crypto
+                .createHmac('sha256', secret)
+                .update(rawBody)
+                .digest('hex');
             return expected === signature;
         } catch (err) {
             console.error('Webhook signature verification error:', err);
             return false;
         }
-    },
-
-    /**
-     * Official Bank / UPI Merchant Status Query
-     * If no official merchant API key is plugged in, returns unverified without faking.
-     */
-    async queryTransactionStatus({ orderId, upiReference, amount }) {
-        if (!this.isOfficialMerchantApiConfigured()) {
-            return {
-                verified: false,
-                status: 'PAYMENT_PENDING',
-                reason: 'NO_MERCHANT_STATUS_API',
-                message: 'A standard personal/P2P UPI ID (@fam, @okhdfcbank, @paytm) does not expose automated server query APIs. Ticket remains locked in PAYMENT_PENDING until confirmed by genuine merchant webhook or bank settlement callback.'
-            };
-        }
-
-        // When official merchant API credentials (e.g. ICICI UPI 2.0 / Cashfree / Setu / Decentro) are provided:
-        try {
-            // Placeholder for official merchant provider status API integration
-            return {
-                verified: false,
-                status: 'PAYMENT_PENDING',
-                message: 'Awaiting bank confirmation for reference ' + upiReference
-            };
-        } catch (e) {
-            return {
-                verified: false,
-                status: 'ERROR',
-                message: e.message
-            };
-        }
     }
 };
 
-module.exports = upiIntentManager;
+module.exports = paymentGatewayManager;
