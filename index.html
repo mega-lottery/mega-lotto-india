@@ -469,44 +469,58 @@
                     </div>
                 </div>
 
-                <!-- Official Secure Payment Gateway Section (Direct Clickable GPay, PhonePe, Paytm, UPI) -->
+                <!-- Real Mobile UPI Intent & UTR Verification Payment Section -->
                 <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 16px; text-align: center;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: #34d399; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
-                        <i class="fa-solid fa-shield-halved"></i> 256-Bit SSL Secure Merchant Checkout
+                        <i class="fa-solid fa-shield-halved"></i> 256-Bit SSL Real UPI Merchant Rail
                     </div>
                     <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px;" id="buy-modal-pool-label">₹19 Pocket Booster</div>
                     <div style="font-family: var(--font-heading); font-size: 28px; font-weight: 900; color: #38ef7d; margin-bottom: 12px;" id="buy-total-payable">₹19.00</div>
 
-                    <!-- Direct Clickable UPI Apps Grid -->
+                    <!-- Step 1: Direct App Redirect Buttons -->
+                    <div style="font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px; text-align: left;">
+                        Step 1: Tap to Pay via your UPI App:
+                    </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                        <button type="button" class="btn-app-checkout gpay" onclick="app.payDirectWithApp('Google Pay')" style="background: rgba(66, 133, 244, 0.12); border: 1px solid rgba(66, 133, 244, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
+                        <button type="button" class="btn-app-checkout gpay" onclick="app.launchUpiApp('gpay')" style="background: rgba(66, 133, 244, 0.15); border: 1px solid rgba(66, 133, 244, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
                             <i class="fa-brands fa-google-pay" style="font-size: 22px; color: #60a5fa;"></i> Google Pay
                         </button>
-                        <button type="button" class="btn-app-checkout phonepe" onclick="app.payDirectWithApp('PhonePe')" style="background: rgba(147, 51, 234, 0.12); border: 1px solid rgba(147, 51, 234, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
+                        <button type="button" class="btn-app-checkout phonepe" onclick="app.launchUpiApp('phonepe')" style="background: rgba(147, 51, 234, 0.15); border: 1px solid rgba(147, 51, 234, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
                             <i class="fa-solid fa-mobile-screen-button" style="font-size: 18px; color: #c084fc;"></i> PhonePe
                         </button>
-                        <button type="button" class="btn-app-checkout paytm" onclick="app.payDirectWithApp('Paytm')" style="background: rgba(0, 185, 241, 0.12); border: 1px solid rgba(0, 185, 241, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
+                        <button type="button" class="btn-app-checkout paytm" onclick="app.launchUpiApp('paytm')" style="background: rgba(0, 185, 241, 0.15); border: 1px solid rgba(0, 185, 241, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
                             <i class="fa-solid fa-wallet" style="font-size: 18px; color: #38bdf8;"></i> Paytm UPI
                         </button>
-                        <button type="button" class="btn-app-checkout bhim" onclick="app.payDirectWithApp('Any UPI / QR')" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
-                            <i class="fa-solid fa-qrcode" style="font-size: 18px; color: #34d399;"></i> QR / BHIM
+                        <button type="button" class="btn-app-checkout bhim" onclick="app.launchUpiApp('upi')" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700;">
+                            <i class="fa-solid fa-qrcode" style="font-size: 18px; color: #34d399;"></i> Any UPI App
                         </button>
                     </div>
 
-                    <!-- Main Pay Button -->
-                    <button type="button" class="btn-primary-block" id="btn-pay-and-confirm-ticket" onclick="app.payDirectWithApp('Instant Gateway')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 15px; padding: 14px; font-weight: 800; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35); width: 100%; cursor: pointer;">
-                        <i class="fa-solid fa-shield-check"></i> <span id="btn-pay-text">Pay ₹19 & Confirm Ticket Instantly</span>
-                    </button>
-
-                    <!-- Live Processing Box -->
-                    <div id="buy-processing-status" style="display: none; margin-top: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(56, 239, 125, 0.3); border-radius: 8px; padding: 12px; text-align: center;">
-                        <div style="font-size: 18px; color: #38ef7d; margin-bottom: 4px;"><i class="fa-solid fa-circle-notch fa-spin"></i></div>
-                        <div style="font-size: 12px; font-weight: 700; color: #fff;" id="buy-processing-text">Connecting to Payment Gateway...</div>
-                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Secured by 256-Bit SSL Encryption</div>
+                    <!-- Step 2: Verification Input after Payment -->
+                    <div style="background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; margin-top: 10px; text-align: left;">
+                        <div style="font-size: 11px; font-weight: 700; color: #fde047; margin-bottom: 6px;">
+                            <i class="fa-solid fa-circle-check"></i> Step 2: Enter 12-Digit UPI Ref / UTR Number:
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                            <input type="text" id="upi-utr-input" placeholder="e.g. 428198765432" maxlength="12" style="flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 10px; color: #fff; font-size: 14px; font-family: var(--font-mono); outline: none;">
+                            <button type="button" class="btn-ticket-action" onclick="app.verifyUtrAndIssueTicket()" style="background: var(--gold-gradient); color: #111; font-weight: 900; padding: 0 14px; border-radius: 6px; flex: none; font-size: 13px;">
+                                Submit UTR
+                            </button>
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
+                            After paying ₹19 in your UPI app, enter the 12-digit UTR / UPI Ref from your payment receipt to activate your ticket.
+                        </div>
                     </div>
 
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                        <i class="fa-solid fa-circle-check" style="color: #34d399;"></i> Official Merchant Rails • Instant 1-Click Ticket Generation
+                    <!-- QR Code Toggle Option -->
+                    <div style="margin-top: 10px; text-align: center;">
+                        <button type="button" class="btn-ticket-action" onclick="app.toggleQrCodeView()" style="background: transparent; border: none; color: #38ef7d; font-size: 11px; padding: 4px; text-decoration: underline; cursor: pointer;">
+                            <i class="fa-solid fa-qrcode"></i> <span id="qr-toggle-label">Scan QR Code instead</span>
+                        </button>
+                        <div id="buy-modal-qr-container" style="display: none; margin-top: 10px; padding: 10px; background: #fff; border-radius: 8px; display: inline-block;">
+                            <img id="buy-modal-qr-img" src="" alt="UPI QR Code" style="width: 150px; height: 150px; display: block;">
+                            <div style="font-size: 10px; color: #111; font-weight: 800; margin-top: 4px;">Scan with Any UPI App</div>
+                        </div>
                     </div>
                 </div>
             </div>
